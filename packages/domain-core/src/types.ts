@@ -104,6 +104,21 @@ export interface AuditEvent {
     payload: Record<string, unknown>;
 }
 
+/** Whether a command would be accepted right now, and if not the §7.2 code it would be refused with. */
+export type ActionAvailability = { available: true } | { available: false; reason: DenialCode };
+
+/** Server-computed affordances for one application (UIs render these; they never re-derive rules). */
+export interface ApplicationActions {
+    approve: ActionAvailability;
+    decline: ActionAvailability;
+    withdraw: ActionAvailability;
+    requestHumanReview: ActionAvailability;
+}
+
+export interface StaffActions {
+    submit: ActionAvailability;
+}
+
 export interface DeclineNotice {
     applicationId: string;
     reasons: { code: DeclineReason; text: string }[];

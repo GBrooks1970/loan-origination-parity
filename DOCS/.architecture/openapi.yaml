@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Loan Origination Parity — Node Service API
-  version: 1.2.0
+  version: 1.3.0
   summary: Staff workbench API for UK unsecured personal loan origination (modelled, simplified).
   description: |
     Contract for `demoapp001-node-service`, the single state authority (DR-004).
@@ -75,6 +75,20 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/StaffMember' }
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/me/actions:
+    get:
+      tags: [session]
+      summary: Whether the current staff member may submit applications (server-computed affordance)
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: Affordances
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffActions' }
         '401': { $ref: '#/components/responses/Problem' }
 
   /api/v1/applications:
@@ -201,6 +215,22 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/applications/{id}/actions:
+    parameters:
+      - $ref: '#/components/parameters/Namespace'
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      tags: [applications]
+      summary: Dry run of the spec §7.2 checks for each command; writes no audit event. UIs render these instead of re-deriving rules.
+      responses:
+        '200':
+          description: Affordances for the current staff member
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationActions' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
 
   /api/v1/applications/{id}/audit:
     parameters:
@@ -396,6 +426,32 @@ components:
       description: Codes raised by the HTTP layer rather than the domain.
       enum: [INVALID_REQUEST, NOT_FOUND, INTERNAL_ERROR]
 
+    ActionAvailability:
+      oneOf:
+        - type: object
+          required: [available]
+          additionalProperties: false
+          properties:
+            available: { type: boolean, const: true }
+        - type: object
+          required: [available, reason]
+          additionalProperties: false
+          properties:
+            available: { type: boolean, const: false }
+            reason: { $ref: '#/components/schemas/DenialCode' }
+    ApplicationActions:
+      type: object
+      required: [approve, decline, withdraw, requestHumanReview]
+      properties:
+        approve: { $ref: '#/components/schemas/ActionAvailability' }
+        decline: { $ref: '#/components/schemas/ActionAvailability' }
+        withdraw: { $ref: '#/components/schemas/ActionAvailability' }
+        requestHumanReview: { $ref: '#/components/schemas/ActionAvailability' }
+    StaffActions:
+      type: object
+      required: [submit]
+      properties:
+        submit: { $ref: '#/components/schemas/ActionAvailability' }
     StaffMember:
       type: object
       required: [username, role, approvalLimit]
