@@ -11,3 +11,4 @@ playwright-report/
 !.env.example
 __pycache__/
 .DS_Store
+test-harnesses/*/reports/
