@@ -82,6 +82,8 @@ export interface Application {
     submittedAt: string;
     decidedAt: string | null;
     humanReviewRequested: boolean;
+    /** When a human review reopened the application; the expiry window restarts from here (spec §6.3). */
+    reopenedAt: string | null;
     ruleSetVersion: string;
 }
 

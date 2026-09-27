@@ -186,6 +186,20 @@ describe('LoanOriginationService', () => {
     });
 
     describe('human review', () => {
+        it('restarts the 30-day expiry window from the review request (spec v1.3)', () => {
+            const app = service.submit('Olivia', standard({}, 'decline'));
+            ports.clock.set(new Date('2026-10-31T09:00:00Z'));
+            const reopened = service.requestHumanReview('Olivia', app.id);
+            assert.equal(reopened.reopenedAt, '2026-10-31T09:00:00.000Z');
+            ports.clock.set(new Date('2026-10-31T09:00:01Z'));
+            assert.equal(service.get('Olivia', app.id).status, 'REFERRED');
+            ports.clock.set(new Date('2026-11-30T09:00:00Z'));
+            assert.equal(service.get('Olivia', app.id).status, 'REFERRED');
+            ports.clock.set(new Date('2026-11-30T09:00:01Z'));
+            assert.equal(service.get('Olivia', app.id).status, 'EXPIRED');
+        });
+
+
         it('can be requested once, then is unavailable', () => {
             const app = service.submit('Olivia', standard({}, 'decline'));
             service.requestHumanReview('Olivia', app.id);
