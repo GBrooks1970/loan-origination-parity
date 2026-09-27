@@ -2,6 +2,7 @@
   "name": "loan-origination-parity",
   "private": true,
   "description": "UK loan origination workbench: one domain engine, four surfaces, one Serenity/JS Screenplay harness.",
+  "license": "MIT",
   "engines": {
     "node": "^22.22.2 || ^24.15.0"
   },
