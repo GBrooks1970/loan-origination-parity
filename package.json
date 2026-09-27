@@ -1,0 +1,19 @@
+{
+  "name": "loan-origination-parity",
+  "private": true,
+  "description": "UK loan origination workbench: one domain engine, four surfaces, one Serenity/JS Screenplay harness.",
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "demo-apps/*",
+    "test-harnesses/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:unit": "npm run test:unit --workspaces --if-present",
+    "check:oracle": "python3 tools/check-expected-values.py"
+  }
+}
