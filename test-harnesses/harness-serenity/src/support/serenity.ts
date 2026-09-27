@@ -1,10 +1,12 @@
-import { After, Before, BeforeAll, setDefaultTimeout } from '@cucumber/cucumber';
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+import { After, AfterAll, Before, BeforeAll, setDefaultTimeout } from '@cucumber/cucumber';
 import { Cast, configure, engage } from '@serenity-js/core';
 import { ConsoleReporter } from '@serenity-js/console-reporter';
 
 import { ControlTheTestEnvironment } from '../screenplay/abilities/ControlTheTestEnvironment.js';
 import { resetScenario } from '../screenplay/ScenarioState.js';
-import { openSession, surfaceName } from './surfaces.js';
+import { openSession, surfaceName, type SurfaceSession } from './surfaces.js';
 
 export const STAGE_MANAGER = 'Stage Manager';
 export const VISITOR = 'Visitor';
@@ -17,19 +19,45 @@ BeforeAll(() => {
     });
 });
 
+let session: SurfaceSession | undefined;
+const setupTimings: number[] = [];
+
 Before(async () => {
     resetScenario();
-    const session = await openSession(surfaceName());
+    session = await openSession(surfaceName());
+    const current = session;
     engage(
         Cast.where((actor) => {
             if (actor.name === STAGE_MANAGER) {
-                return actor.whoCan(ControlTheTestEnvironment.using(session.control));
+                return actor.whoCan(ControlTheTestEnvironment.using(current.control));
             }
-            return actor.whoCan(session.workbenchFor(actor.name === VISITOR ? undefined : actor.name));
+            return actor.whoCan(current.workbenchFor(actor.name === VISITOR ? undefined : actor.name));
         }),
     );
 });
 
-After(() => {
+After(async () => {
+    const millis = session?.setupMillis();
+    if (millis !== undefined) setupTimings.push(millis);
+    await session?.close();
+    session = undefined;
     resetScenario();
+});
+
+/** Records the measured per-scenario set-up cost (spec §11: target under 200 ms; nothing is claimed unmeasured). */
+AfterAll(() => {
+    if (setupTimings.length === 0) return;
+    const sorted = [...setupTimings].sort((a, b) => a - b);
+    const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.ceil(q * sorted.length) - 1)]!;
+    const summary = {
+        surface: surfaceName(),
+        scenarios: sorted.length,
+        p50Ms: Number(at(0.5).toFixed(2)),
+        p95Ms: Number(at(0.95).toFixed(2)),
+        maxMs: Number(sorted.at(-1)!.toFixed(2)),
+        meanMs: Number((sorted.reduce((a, b) => a + b, 0) / sorted.length).toFixed(2)),
+    };
+    mkdirSync('reports', { recursive: true });
+    writeFileSync(`reports/setup-timings-${summary.surface}.json`, JSON.stringify(summary, null, 2));
+    console.log(`Per-scenario set-up (${summary.surface}): p50 ${summary.p50Ms} ms, p95 ${summary.p95Ms} ms, max ${summary.maxMs} ms over ${summary.scenarios} scenarios`);
 });
