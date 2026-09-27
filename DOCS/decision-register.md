@@ -262,6 +262,27 @@ Use the latest stable major of Node.js LTS, TypeScript, Angular, Next.js, Sereni
 
 ---
 
+### Resolved versions (Phase 1 start, 27 September 2026)
+
+Resolved from the npm registry and nodejs.org on 27 September 2026, checked twice (before the repository was created and again at Phase 1 start) with identical results. Pinned exactly in `package.json` files and `package-lock.json`.
+
+| Component | Version | Note |
+| :--- | :--- | :--- |
+| Node.js LTS | 24.21.0 ("Krypton") | `.nvmrc`; Serenity/JS 3.48 requires `^22.22.2 \|\| ^24.15.0` |
+| TypeScript | 6.0.3 | **Not 7.0.2** (npm `latest`): Angular 22.2's compiler accepts `>=6.0 <6.1` only, and the workspace uses one compiler |
+| Serenity/JS (core, cucumber, assertions, console-reporter) | 3.48.0 | |
+| Cucumber.js | 13.2.1 | |
+| Express | 5.2.1 | |
+| Zod | 4.6.5 | |
+| decimal.js | 10.6.0 | |
+| tsx | 4.23.15 | TypeScript execution for tests and the harness |
+| @types/node | 24.19.0 | Matches the Node 24 LTS line |
+| Angular (Phase 2) | 22.2.0 | Recorded now; installed in Phase 2 after re-checking |
+| Next.js / React (Phase 3) | 16.3.6 / 19.3.0 | Recorded now; installed in Phase 3 after re-checking |
+| Playwright (Phase 2) | 1.63.0 | Recorded now; installed in Phase 2 after re-checking |
+
+---
+
 ## DR-010: Server Actions tested through the browser only
 
 **Status:** Accepted (owner, 2026-09-27)

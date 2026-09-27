@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify (unit, contract, oracle, core + API surfaces, parity)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          npm ci
+          pip install gherkin-official==42.0.1
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and contract tests
+        run: npm run test:unit
+
+      - name: Expected-value oracle
+        run: npm run check:oracle
+
+      - name: Domain-core surface
+        run: npm run test:core
+
+      - name: API surface
+        run: npm run test:api
+
+      - name: Parity gate
+        run: npm run check:parity
+
+      - name: Upload Cucumber messages and timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-reports
+          path: test-harnesses/harness-serenity/reports/
+          if-no-files-found: ignore
