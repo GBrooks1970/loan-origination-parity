@@ -1,6 +1,6 @@
 # Loan Origination Parity — Platform Specification
 
-**Version:** v1.2
+**Version:** v1.3
 **Date:** 2026-09-27
 **Status:** Approved — Phase 0 contract accepted by the owner on 27 September 2026
 **Supersedes (for Alpha only):** PRJ-01 in `project-specs/potential-project-outlines/nodejs-angular-multi-stack-parity-outlines.md` (V1) and `…-tri-stack-parity-outlines-v2.md` (V2)
@@ -100,6 +100,7 @@ Currency is GBP. Business dates are evaluated in the `Europe/London` time zone. 
 | `recommendation` | `ACCEPT` \| `REFER` \| `DECLINE` | Output of §5 |
 | `createdBy`, `decidedBy` | staff username | |
 | `submittedAt`, `decidedAt` | ISO instant (UTC) | |
+| `reopenedAt` | ISO instant (UTC) or null | Set when a human review reopens the application; restarts the expiry window (§6.3) |
 | `ruleSetVersion` | string | `2026.10` |
 
 ### 4.2 Money and arithmetic (DR-008)
@@ -197,11 +198,11 @@ Every rule is evaluated for every application, in rule order, even after an earl
 | `REFERRED` | decline | Senior underwriter only; reason text required | `DECLINED` | `MANUAL` |
 | `AWAITING_APPROVAL`, `REFERRED` | withdraw | Creator only | `WITHDRAWN` | unchanged |
 | `DECLINED` (`AUTOMATED`, no prior review) | request human review | Within 30 days of `decidedAt` | `REFERRED` | cleared |
-| `AWAITING_APPROVAL`, `REFERRED` | (time) | `now` > `submittedAt` + 30 days | `EXPIRED` | unchanged |
+| `AWAITING_APPROVAL`, `REFERRED` | (time) | `now` > (`reopenedAt` or else `submittedAt`) + 30 days | `EXPIRED` | unchanged |
 
 ### 6.3 Time rules
 
-- **Expiry** is strict: an application submitted at `2026-10-01T09:00:00Z` is live at `2026-10-31T09:00:00Z` and expired at `2026-10-31T09:00:01Z`. Expiry is applied lazily. Any read or command on the application first applies it, so behaviour is deterministic under the virtual clock and needs no background job.
+- **Expiry** is strict: an application submitted at `2026-10-01T09:00:00Z` is live at `2026-10-31T09:00:00Z` and expired at `2026-10-31T09:00:01Z`. A human review restarts the window: the 30 days then run from the review request (`reopenedAt`), so a review requested at `2026-10-31T09:00:00Z` keeps the application live until `2026-11-30T09:00:00Z`. Expiry is applied lazily. Any read or command on the application first applies it, so behaviour is deterministic under the virtual clock and needs no background job.
 - **Human review window** is inclusive: a request at exactly `decidedAt` + 30 days is accepted; one second later it is refused with `REVIEW_WINDOW_CLOSED`.
 
 ---
@@ -459,9 +460,9 @@ Every expected value in `features-shared/` was computed with [`../../tools/check
 - `REASON_REQUIRED` (422) added for a blank manual-decline reason. §6.2 already required a reason but did not name the refusal.
 - The HTTP layer returns `400 INVALID_REQUEST` for a malformed body or a missing test-mode namespace, `404 NOT_FOUND` for an unknown application or route, and `500 INTERNAL_ERROR`. OpenAPI 1.1.0 declares all three, plus `GET /health`.
 
-### Open question raised in Phase 1
+### Amendment in v1.3 (27 September 2026)
 
-- **Expiry after a human review.** §6.3 measures expiry from `submittedAt`, so an application reopened by a human review late in the window (for example on day 30) expires almost immediately. The implementation follows the spec as written. The owner should decide whether a review restarts the 30-day window.
+- **A human review restarts the 30-day expiry window** (owner decision, 27 September 2026). v1.2 measured expiry from `submittedAt` only, so an application reopened by a review on day 30 expired almost immediately. Expiry now runs from `reopenedAt` when set. Covered by `workflows/human-review-request.feature`; OpenAPI 1.2.0 adds `reopenedAt`.
 
 ### Phase 0 questions
 

@@ -6,6 +6,7 @@ Feature: Human review of automated declines
 
   Spec: §6.2–6.3; modelled on UK GDPR Article 22. Staff record the request on the
   customer's behalf. The 30-day window is inclusive. The fixture decline is at 2026-10-01T09:00:00Z.
+  A review restarts the 30-day expiry window (spec §6.3, v1.3).
 
   Background:
     Given the current time is "2026-10-01T09:00:00Z"
@@ -28,6 +29,19 @@ Feature: Human review of automated declines
       | time                 |
       | 2026-10-15T09:00:00Z |
       | 2026-10-31T09:00:00Z |
+
+  Scenario Outline: A human review restarts the 30-day expiry window; at <time> the application is <status>
+    Given Olivia has submitted an application that was declined
+    And the current time is "2026-10-31T09:00:00Z"
+    And Olivia has requested a human review of the application
+    When the current time is "<time>"
+    Then the application status is "<status>"
+
+    Examples:
+      | time                 | status   |
+      | 2026-10-31T09:00:01Z | REFERRED |
+      | 2026-11-30T09:00:00Z | REFERRED |
+      | 2026-11-30T09:00:01Z | EXPIRED  |
 
   Scenario: A request after 30 days is refused
     Given Olivia has submitted an application that was declined

@@ -72,6 +72,7 @@ export class LoanOriginationService {
             submittedAt: now.toISOString(),
             decidedAt: declined ? now.toISOString() : null,
             humanReviewRequested: false,
+            reopenedAt: null,
             ruleSetVersion: RULE_SET_VERSION,
         };
         this.ports.applications.save(application);
@@ -130,11 +131,12 @@ export class LoanOriginationService {
     }
 
     requestHumanReview(actor: string | undefined, id: string): Application {
-        const updated = this.transition(actor, id, 'request human review', (app) => ({
+        const updated = this.transition(actor, id, 'request human review', (app, _staff, now) => ({
             ...app,
             status: 'REFERRED',
             decisionType: null,
             humanReviewRequested: true,
+            reopenedAt: now.toISOString(),
         }));
         this.record('HUMAN_REVIEW_REQUESTED', actor ?? SYSTEM_ACTOR, id, {});
         return updated;
@@ -228,13 +230,17 @@ export class LoanOriginationService {
         return this.applyExpiry(application);
     }
 
-    /** Spec §6.3: strict 30 days, applied on the next read or command. */
+    /**
+     * Spec §6.3: strict 30 days from submission, or from the human review that reopened the
+     * application if later. Applied on the next read or command.
+     */
     private applyExpiry(application: Application): Application {
         const open = application.status === 'AWAITING_APPROVAL' || application.status === 'REFERRED';
         if (!open) {
             return application;
         }
-        const expiresAfter = addDays(new Date(application.submittedAt), EXPIRY_DAYS);
+        const windowStart = application.reopenedAt ?? application.submittedAt;
+        const expiresAfter = addDays(new Date(windowStart), EXPIRY_DAYS);
         if (this.ports.clock.now().getTime() <= expiresAfter.getTime()) {
             return application;
         }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Loan Origination Parity — Node Service API
-  version: 1.1.0
+  version: 1.2.0
   summary: Staff workbench API for UK unsecured personal loan origination (modelled, simplified).
   description: |
     Contract for `demoapp001-node-service`, the single state authority (DR-004).
@@ -439,7 +439,7 @@ components:
 
     Application:
       type: object
-      required: [id, status, recommendation, creditBand, debtServiceRatio, ruleResults, declineReasons, amount, termMonths, monthlyRepayment, createdBy, submittedAt, ruleSetVersion]
+      required: [id, status, recommendation, creditBand, debtServiceRatio, ruleResults, declineReasons, amount, termMonths, monthlyRepayment, createdBy, submittedAt, reopenedAt, ruleSetVersion]
       properties:
         id: { type: string, pattern: '^APP-[0-9]{6}$' }
         status: { $ref: '#/components/schemas/Status' }
@@ -467,6 +467,10 @@ components:
         submittedAt: { type: string, format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         humanReviewRequested: { type: boolean }
+        reopenedAt:
+          type: [string, 'null']
+          format: date-time
+          description: When a human review reopened the application; the 30-day expiry window restarts from here
         ruleSetVersion: { type: string, const: '2026.10' }
 
     AuditEvent:
