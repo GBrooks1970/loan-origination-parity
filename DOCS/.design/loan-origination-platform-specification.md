@@ -1,6 +1,6 @@
 # Loan Origination Parity — Platform Specification
 
-**Version:** v1.1 (Phase 0)
+**Version:** v1.2
 **Date:** 2026-09-27
 **Status:** Approved — Phase 0 contract accepted by the owner on 27 September 2026
 **Supersedes (for Alpha only):** PRJ-01 in `project-specs/potential-project-outlines/nodejs-angular-multi-stack-parity-outlines.md` (V1) and `…-tri-stack-parity-outlines-v2.md` (V2)
@@ -118,6 +118,7 @@ Validation runs after §7.2 checks 1–2 (authentication and role). Invalid requ
 | `termMonths` < 12 or > 60 | `TERM_OUT_OF_RANGE` |
 | Any money field negative, or with more than 2 decimal places | `INVALID_MONEY` |
 | `netMonthlyIncome` = 0.00 | `INVALID_MONEY` |
+| Manual decline with a blank reason (checked after §7.2 checks 1–7) | `REASON_REQUIRED` |
 
 ---
 
@@ -452,6 +453,17 @@ Every expected value in `features-shared/` was computed with [`../../tools/check
 **Phase 0 is complete.** Carried into Phase 1: resolve framework versions and record them in DR-009 on the day Phase 1 starts.
 
 ## 16. Resolved questions
+
+### Amendments in v1.2 (Phase 1, 27 September 2026)
+
+- `REASON_REQUIRED` (422) added for a blank manual-decline reason. §6.2 already required a reason but did not name the refusal.
+- The HTTP layer returns `400 INVALID_REQUEST` for a malformed body or a missing test-mode namespace, `404 NOT_FOUND` for an unknown application or route, and `500 INTERNAL_ERROR`. OpenAPI 1.1.0 declares all three, plus `GET /health`.
+
+### Open question raised in Phase 1
+
+- **Expiry after a human review.** §6.3 measures expiry from `submittedAt`, so an application reopened by a human review late in the window (for example on day 30) expires almost immediately. The implementation follows the spec as written. The owner should decide whether a review restarts the 30-day window.
+
+### Phase 0 questions
 
 Both resolved by the owner on 27 September 2026, keeping the behaviour this specification already describes.
 
