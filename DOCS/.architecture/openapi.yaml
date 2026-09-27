@@ -1,0 +1,493 @@
+openapi: 3.1.0
+info:
+  title: Loan Origination Parity — Node Service API
+  version: 1.0.0-phase0
+  summary: Staff workbench API for UK unsecured personal loan origination (modelled, simplified).
+  description: |
+    Contract for `demoapp001-node-service`, the single state authority (DR-004).
+    Behaviour is defined in `../.design/loan-origination-platform-specification.md`.
+    Money is always a string with exactly two decimal places (DR-008).
+    Errors use RFC 9457 problem details with a machine-readable `code`.
+servers:
+  - url: http://localhost:8000
+    description: Local / CI (port from environment)
+
+security:
+  - session: []
+
+tags:
+  - name: session
+  - name: applications
+  - name: test-control
+    description: Present only when APP_MODE=test (DR-005). Returns 404 otherwise.
+
+paths:
+  /api/v1/session:
+    post:
+      tags: [session]
+      summary: Start a fixture session for a seeded staff member (test mode only, DR-012)
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username: { type: string, examples: [Olivia] }
+      responses:
+        '204':
+          description: Session cookie set
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/me:
+    get:
+      tags: [session]
+      summary: Current staff member, role and approval limit (used by UIs for affordances only)
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+      responses:
+        '200':
+          description: Current staff member
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffMember' }
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/applications:
+    get:
+      tags: [applications]
+      summary: List applications in the namespace
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/Status' }
+      responses:
+        '200':
+          description: Applications, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [applications]
+      summary: Submit and evaluate an application
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewApplication' }
+      responses:
+        '201':
+          description: Created and evaluated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422':
+          description: Validation failure (AMOUNT_OUT_OF_RANGE, TERM_OUT_OF_RANGE, INVALID_MONEY)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/v1/applications/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Namespace'
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      tags: [applications]
+      summary: Get an application (applies lazy expiry first)
+      responses:
+        '200':
+          description: The application
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/applications/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/Namespace'
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      tags: [applications]
+      summary: Approve (spec §7.2 checks 1–7)
+      responses:
+        '200': { $ref: '#/components/responses/ApplicationResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/applications/{id}/decline:
+    parameters:
+      - $ref: '#/components/parameters/Namespace'
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      tags: [applications]
+      summary: Manually decline (reason text kept internal)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        '200': { $ref: '#/components/responses/ApplicationResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/applications/{id}/withdraw:
+    parameters:
+      - $ref: '#/components/parameters/Namespace'
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      tags: [applications]
+      summary: Withdraw (creator only)
+      responses:
+        '200': { $ref: '#/components/responses/ApplicationResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/applications/{id}/human-review:
+    parameters:
+      - $ref: '#/components/parameters/Namespace'
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      tags: [applications]
+      summary: Request human review of an automated decline (within 30 days)
+      responses:
+        '200': { $ref: '#/components/responses/ApplicationResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/applications/{id}/audit:
+    parameters:
+      - $ref: '#/components/parameters/Namespace'
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      tags: [applications]
+      summary: Audit events for the application, in sequence order
+      responses:
+        '200':
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AuditEvent' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/applications/{id}/decline-notice:
+    parameters:
+      - $ref: '#/components/parameters/Namespace'
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      tags: [applications]
+      summary: Customer-facing decline notice (spec §9)
+      responses:
+        '200':
+          description: The notice
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeclineNotice' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: Application is not declined (INVALID_STATE)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /__test__/namespaces/{ns}/reset:
+    post:
+      tags: [test-control]
+      security: [{ testControl: [] }]
+      parameters: [{ $ref: '#/components/parameters/NamespacePath' }]
+      responses:
+        '204': { description: Namespace emptied }
+
+  /__test__/namespaces/{ns}/staff:
+    put:
+      tags: [test-control]
+      security: [{ testControl: [] }]
+      parameters: [{ $ref: '#/components/parameters/NamespacePath' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [username, role]
+                properties:
+                  username: { type: string }
+                  role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '204': { description: Directory replaced }
+
+  /__test__/namespaces/{ns}/clock:
+    put:
+      tags: [test-control]
+      security: [{ testControl: [] }]
+      parameters: [{ $ref: '#/components/parameters/NamespacePath' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [now]
+              properties:
+                now: { type: string, format: date-time, examples: ['2026-10-01T09:00:00Z'] }
+      responses:
+        '204': { description: Clock set; it does not advance on its own }
+
+  /__test__/namespaces/{ns}/bureau/{applicantRef}:
+    put:
+      tags: [test-control]
+      security: [{ testControl: [] }]
+      parameters:
+        - $ref: '#/components/parameters/NamespacePath'
+        - name: applicantRef
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [score]
+              properties:
+                score: { type: integer, minimum: 0, maximum: 999 }
+      responses:
+        '204': { description: Fixture score set for the fixture credit reference agency }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: lop_session
+    testControl:
+      type: apiKey
+      in: header
+      name: X-Test-Control-Token
+
+  parameters:
+    Namespace:
+      name: X-Test-Namespace
+      in: header
+      required: false
+      description: Required in test mode; one per scenario (DR-005). Ignored outside test mode.
+      schema: { type: string, pattern: '^[a-z0-9-]{1,64}$' }
+    NamespacePath:
+      name: ns
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9-]{1,64}$' }
+    ApplicationId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^APP-[0-9]{6}$' }
+
+  responses:
+    ApplicationResponse:
+      description: The application after the command
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Application' }
+    Problem:
+      description: RFC 9457 problem details
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Money:
+      type: string
+      pattern: '^-?[0-9]+\.[0-9]{2}$'
+      examples: ['5000.00']
+    Percentage:
+      type: string
+      pattern: '^[0-9]+\.[0-9]{2}$'
+      examples: ['35.00']
+    Role:
+      type: string
+      enum: [LOAN_OFFICER, UNDERWRITER, SENIOR_UNDERWRITER, AUDITOR]
+    Status:
+      type: string
+      enum: [AWAITING_APPROVAL, REFERRED, APPROVED, DECLINED, WITHDRAWN, EXPIRED]
+    Recommendation:
+      type: string
+      enum: [ACCEPT, REFER, DECLINE]
+    RuleId:
+      type: string
+      enum: [R01_AGE, R02_CREDIT_BAND, R03_DSR, R04_RESIDUAL_INCOME]
+    RuleResultValue:
+      type: string
+      enum: [PASS, REFER, FAIL, NOT_APPLICABLE]
+    DeclineReason:
+      type: string
+      enum: [ELIGIBILITY_AGE, CREDIT_HISTORY, AFFORDABILITY_DSR, AFFORDABILITY_RESIDUAL, UNDERWRITER_DECISION]
+    DenialCode:
+      type: string
+      enum:
+        - UNAUTHENTICATED
+        - ROLE_NOT_PERMITTED
+        - INVALID_STATE
+        - NOT_APPLICATION_OWNER
+        - SELF_APPROVAL
+        - REFERRAL_AUTHORITY
+        - LIMIT_EXCEEDED
+        - REVIEW_NOT_AVAILABLE
+        - REVIEW_WINDOW_CLOSED
+    ValidationCode:
+      type: string
+      enum: [AMOUNT_OUT_OF_RANGE, TERM_OUT_OF_RANGE, INVALID_MONEY]
+
+    StaffMember:
+      type: object
+      required: [username, role, approvalLimit]
+      properties:
+        username: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        approvalLimit:
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+
+    Applicant:
+      type: object
+      required: [applicantRef, dateOfBirth, netMonthlyIncome, monthlyCreditCommitments, essentialMonthlyExpenditure]
+      properties:
+        applicantRef:
+          type: string
+          description: Key used by the credit reference agency; the score is never keyed by staff
+        dateOfBirth: { type: string, format: date }
+        netMonthlyIncome: { $ref: '#/components/schemas/Money' }
+        monthlyCreditCommitments: { $ref: '#/components/schemas/Money' }
+        essentialMonthlyExpenditure: { $ref: '#/components/schemas/Money' }
+
+    NewApplication:
+      type: object
+      required: [applicant, amount, termMonths, monthlyRepayment]
+      properties:
+        applicant: { $ref: '#/components/schemas/Applicant' }
+        amount: { $ref: '#/components/schemas/Money' }
+        termMonths: { type: integer }
+        monthlyRepayment: { $ref: '#/components/schemas/Money' }
+
+    RuleResult:
+      type: object
+      required: [rule, result, observed, threshold]
+      properties:
+        rule: { $ref: '#/components/schemas/RuleId' }
+        result: { $ref: '#/components/schemas/RuleResultValue' }
+        observed: { type: string }
+        threshold: { type: string, description: "'none' when NOT_APPLICABLE" }
+
+    Application:
+      type: object
+      required: [id, status, recommendation, creditBand, debtServiceRatio, ruleResults, declineReasons, amount, termMonths, monthlyRepayment, createdBy, submittedAt, ruleSetVersion]
+      properties:
+        id: { type: string, pattern: '^APP-[0-9]{6}$' }
+        status: { $ref: '#/components/schemas/Status' }
+        decisionType:
+          oneOf:
+            - type: string
+              enum: [AUTOMATED, MANUAL]
+            - type: 'null'
+        recommendation: { $ref: '#/components/schemas/Recommendation' }
+        creditBand: { type: string, enum: [A, B, C, D] }
+        debtServiceRatio: { $ref: '#/components/schemas/Percentage' }
+        ruleResults:
+          type: array
+          items: { $ref: '#/components/schemas/RuleResult' }
+          minItems: 4
+          maxItems: 4
+        declineReasons:
+          type: array
+          items: { $ref: '#/components/schemas/DeclineReason' }
+        amount: { $ref: '#/components/schemas/Money' }
+        termMonths: { type: integer }
+        monthlyRepayment: { $ref: '#/components/schemas/Money' }
+        createdBy: { type: string }
+        decidedBy: { type: [string, 'null'] }
+        submittedAt: { type: string, format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        humanReviewRequested: { type: boolean }
+        ruleSetVersion: { type: string, const: '2026.10' }
+
+    AuditEvent:
+      type: object
+      required: [sequence, type, at, actor, applicationId]
+      properties:
+        sequence: { type: integer, minimum: 1 }
+        type:
+          type: string
+          enum: [APPLICATION_SUBMITTED, RULE_EVALUATED, STATUS_CHANGED, AUTHORISATION_DENIED, HUMAN_REVIEW_REQUESTED, DECLINE_NOTICE_ISSUED]
+        at: { type: string, format: date-time }
+        actor: { type: string, description: "Staff username, or 'system' for lazy expiry" }
+        applicationId: { type: string }
+        payload: { type: object }
+
+    DeclineNotice:
+      type: object
+      required: [applicationId, reasons, creditReferenceAgencyDisclosed, humanReviewAvailable]
+      properties:
+        applicationId: { type: string }
+        reasons:
+          type: array
+          items:
+            type: object
+            required: [code, text]
+            properties:
+              code: { $ref: '#/components/schemas/DeclineReason' }
+              text: { type: string }
+        creditReferenceAgencyDisclosed: { type: boolean }
+        creditReferenceAgencyName:
+          type: [string, 'null']
+          examples: ['Fixture Credit Reference Agency Ltd']
+        humanReviewAvailable: { type: boolean }
+
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        code:
+          oneOf:
+            - $ref: '#/components/schemas/DenialCode'
+            - $ref: '#/components/schemas/ValidationCode'
+        detail: { type: string }
