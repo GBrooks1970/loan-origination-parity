@@ -55,4 +55,4 @@ npm run verify
 
 ## Licence
 
-Not yet chosen. The portfolio has set licences per project; this is an open decision for the owner.
+[MIT](LICENSE), Copyright (c) 2026 Gary Brooks. This matches the portfolio convention for original project code (P-04 decision matrix in `test-automation-portfolio`). Each portfolio repository's own licence is authoritative. Third-party dependencies keep their own terms.

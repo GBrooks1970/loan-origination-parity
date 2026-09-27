@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Stack 1: Node.js REST API over domain-core; the single state authority (DR-004).",
+  "license": "MIT",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {

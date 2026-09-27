@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Pure domain engine: rules R01-R04, lifecycle, authorisation, audit. No I/O (DR-004).",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

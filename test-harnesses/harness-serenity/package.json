@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "One Serenity/JS Screenplay harness driving features-shared/ against every surface (DR-013).",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
