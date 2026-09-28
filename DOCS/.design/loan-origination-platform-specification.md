@@ -1,7 +1,7 @@
 # Loan Origination Parity — Platform Specification
 
-**Version:** v1.3
-**Date:** 2026-09-27
+**Version:** v1.4
+**Date:** 2026-09-28
 **Status:** Approved — Phase 0 contract accepted by the owner on 27 September 2026
 **Supersedes (for Alpha only):** PRJ-01 in `project-specs/potential-project-outlines/nodejs-angular-multi-stack-parity-outlines.md` (V1) and `…-tri-stack-parity-outlines-v2.md` (V2)
 **Derived from:** `project-specs/potential-project-outlines/multi-stack-parity-outlines-critique.md` §2.1, §2.4, §5
@@ -320,6 +320,8 @@ Locator contract (DR-007):
 - Interactive controls are located by ARIA role and accessible name only. Button names are fixed: `Submit application`, `Approve`, `Decline`, `Withdraw`, `Request human review`.
 - Read-only values carry `data-testid` plus a canonical `data-value`, e.g. `<span data-testid="dsr" data-value="35.00">35.00%</span>`. Parity assertions read `data-value`, never formatted text.
 - A hidden action renders a `data-testid="action-unavailable"` element with `data-action` and `data-reason` (a §7.2 code), so affordance scenarios assert *why* an action is absent.
+- Availability comes from the server: `GET /api/v1/applications/{id}/actions` and `GET /api/v1/me/actions` run the §7.2 checks as a dry run (DR-015). UIs never re-derive authorisation.
+- UIs are served same-origin with the API behind a thin proxy (DR-014).
 - Formatting is asserted only in `ui-only/value-formatting.feature`, in `en-GB` and `Europe/London`.
 
 ### 10.3 Next.js specifics (DR-004, DR-010)
@@ -459,6 +461,10 @@ Every expected value in `features-shared/` was computed with [`../../tools/check
 
 - `REASON_REQUIRED` (422) added for a blank manual-decline reason. §6.2 already required a reason but did not name the refusal.
 - The HTTP layer returns `400 INVALID_REQUEST` for a malformed body or a missing test-mode namespace, `404 NOT_FOUND` for an unknown application or route, and `500 INTERNAL_ERROR`. OpenAPI 1.1.0 declares all three, plus `GET /health`.
+
+### Amendments in v1.4 (Phase 2, 28 September 2026)
+
+- Server-computed action affordances (DR-015; OpenAPI 1.3.0), same-origin UI serving (DR-014), and the browser-surface harness design (DR-016).
 
 ### Amendment in v1.3 (27 September 2026)
 
