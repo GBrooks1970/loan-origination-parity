@@ -4,19 +4,23 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Started by hand for the Phase 4 stability runs (and any later re-check of main).
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push to a pull request cancels its previous run. Each dispatched run gets its own group,
+  # so several stability runs can queue side by side without cancelling each other.
+  group: ci-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'latest' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
-    name: Verify (unit, contract, oracle, core + API + Angular + Next.js surfaces, parity)
+  static:
+    name: Static (typecheck, unit, contract, oracle)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,30 +49,79 @@ jobs:
       - name: Expected-value oracle
         run: npm run check:oracle
 
-      - name: Domain-core surface
-        run: npm run test:core
+  surface:
+    # Each surface builds what it needs and runs in parallel with the others (DR-006 reach per folder).
+    name: Surface (${{ matrix.surface }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        surface: [core, api, angular, nextjs]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: API surface
-        run: npm run test:api
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
 
       - name: Install Playwright Chromium
+        if: matrix.surface == 'angular' || matrix.surface == 'nextjs'
         run: npx playwright install --with-deps chromium
 
-      - name: Angular surface
-        run: npm run test:angular
-
-      - name: Next.js surface
-        run: npm run test:nextjs
+      - name: Run the ${{ matrix.surface }} surface
+        run: npm run test:${{ matrix.surface }}
         env:
           NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Upload Cucumber messages and set-up timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ matrix.surface }}
+          path: test-harnesses/harness-serenity/reports/
+          if-no-files-found: error
+
+  parity:
+    # Fan-in: the gate compares all four surfaces' reports, so it runs once they have all finished.
+    name: Parity gate and measured timings
+    needs: [static, surface]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Collect every surface's reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: reports-*
+          merge-multiple: true
+          path: test-harnesses/harness-serenity/reports/
 
       - name: Parity gate
         run: npm run check:parity
 
-      - name: Upload Cucumber messages and timings
+      - name: Measured timings
+        if: always()
+        run: npm run report:timings
+
+      - name: Upload timings summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: harness-reports
-          path: test-harnesses/harness-serenity/reports/
+          name: timings-summary
+          path: test-harnesses/harness-serenity/reports/timings-summary.json
           if-no-files-found: ignore
