@@ -17,9 +17,10 @@ import type { ApiBackend } from './CallLoanApi.js';
 import { OperateTheWorkbench } from './OperateTheWorkbench.js';
 
 /**
- * A browser surface (Angular in Phase 2). Commands click the real controls; questions read the
- * rendered data-value attributes (DR-007). Preconditions go through the API, and forced commands
- * go to the API with the browser's own session (DR-010).
+ * A browser surface: Angular (client-rendered) or Next.js (server-rendered). Commands click the real
+ * controls; questions read the rendered data-value attributes (DR-007). Preconditions go through the
+ * API. Forced commands (DR-010) go to the API with the SPA's own session on Angular, and replay a
+ * captured Server Action form as the forcing actor on Next.js.
  */
 export class BrowseTheWorkbench extends OperateTheWorkbench {
     static using(ui: BrowserBackend, username: string | undefined): BrowseTheWorkbench {
@@ -30,7 +31,20 @@ export class BrowseTheWorkbench extends OperateTheWorkbench {
 export interface BrowserSettings {
     baseUrl: string;
     surface: string;
+    /**
+     * `client`: the SPA calls the API from the browser, so a command's outcome is its API response.
+     * `server`: Server Actions post/redirect/get, so the outcome is the redirect target (DR-017).
+     */
+    rendering: 'client' | 'server';
 }
+
+/** A Server Action form captured from a rendered page (DR-010): where it posts and what it sends. */
+interface CapturedForm {
+    routeFor(applicationId: string): string;
+    fields: [string, string][];
+}
+
+type FormKey = 'submit' | 'approve' | 'decline' | 'withdraw' | 'human-review';
 
 const PAGE_ROUTES: Record<string, (id: string) => string> = {
     'application queue': () => '/applications',
@@ -49,6 +63,9 @@ const ACTION_BUTTON: Record<'approve' | 'withdraw' | 'human-review', string> = {
 const VISITOR = '__visitor__';
 
 export class BrowserBackend implements WorkbenchBackend {
+    /** Captured once per run and UI: action IDs are fixed for a build, so one capture serves every scenario. */
+    private static readonly capturedForms = new Map<string, Promise<Map<FormKey, CapturedForm>>>();
+
     readonly surface: string;
     private readonly contexts = new Map<string, Promise<{ context: BrowserContext; page: Page; consoleErrors: string[] }>>();
 
@@ -113,8 +130,12 @@ export class BrowserBackend implements WorkbenchBackend {
         this.contexts.clear();
     }
 
-    /** DR-010 on a client-rendered SPA: the command goes to the API with the SPA's own session cookie. */
+    /**
+     * DR-010. Client-rendered SPA: the command goes to the API with the SPA's own session cookie.
+     * Server-rendered (Next.js): a Server Action form captured at run time is replayed by the actor.
+     */
     forcedVia(): WorkbenchBackend {
+        if (this.settings.rendering === 'server') return this.forgedForms();
         const post = async (user: string | undefined, path: string, body: unknown = {}) => {
             const { context } = await this.session(user);
             const res = await context.request.post(`/api/v1${path}`, {
@@ -148,10 +169,10 @@ export class BrowserBackend implements WorkbenchBackend {
         const page = await this.pageFor(user);
         await page.goto('/applications/new');
         await this.fillApplication(page, input);
-        const outcome = this.outcomeOf(page, (r) => r.url().endsWith('/api/v1/applications') && r.request().method() === 'POST');
+        const outcome = this.commandOutcome(page, (r) => r.url().endsWith('/api/v1/applications') && r.request().method() === 'POST');
         await page.getByRole('button', { name: 'Submit application', exact: true }).click();
         const created = (await outcome) as Application;
-        await page.waitForURL(`**/applications/${created.id}`);
+        await page.waitForURL((url) => url.pathname === `/applications/${created.id}`);
         return this.get(user, created.id);
     }
 
@@ -169,10 +190,10 @@ export class BrowserBackend implements WorkbenchBackend {
             if (index < values.length - 1) await page.keyboard.press('Tab');
         }
         await page.keyboard.press('Tab');
-        const outcome = this.outcomeOf(page, (r) => r.url().endsWith('/api/v1/applications') && r.request().method() === 'POST');
+        const outcome = this.commandOutcome(page, (r) => r.url().endsWith('/api/v1/applications') && r.request().method() === 'POST');
         await page.keyboard.press('Enter');
         const created = (await outcome) as Application;
-        await page.waitForURL(`**/applications/${created.id}`);
+        await page.waitForURL((url) => url.pathname === `/applications/${created.id}`);
         return this.get(user, created.id);
     }
 
@@ -185,7 +206,7 @@ export class BrowserBackend implements WorkbenchBackend {
         await this.requireButton(page, 'Decline');
         await page.getByRole('button', { name: 'Decline', exact: true }).click();
         await page.getByLabel('Reason', { exact: true }).fill(reason);
-        const outcome = this.outcomeOf(page, (r) => r.url().endsWith(`/${id}/decline`) && r.request().method() === 'POST');
+        const outcome = this.commandOutcome(page, (r) => r.url().endsWith(`/${id}/decline`) && r.request().method() === 'POST');
         await page.getByRole('button', { name: 'Confirm decline', exact: true }).click();
         await outcome;
         return this.get(user, id);
@@ -238,7 +259,7 @@ export class BrowserBackend implements WorkbenchBackend {
 
     async list(user: string | undefined): Promise<Application[]> {
         const page = await this.pageFor(user);
-        const loaded = this.outcomeOf(page, (r) => r.url().endsWith('/api/v1/applications') && r.request().method() === 'GET');
+        const loaded = this.pageData(page, (r) => r.url().endsWith('/api/v1/applications') && r.request().method() === 'GET');
         await page.goto('/applications');
         await loaded;
         const rows = page.locator('[data-testid="application-row"]');
@@ -249,7 +270,7 @@ export class BrowserBackend implements WorkbenchBackend {
 
     async auditTrail(user: string | undefined, id: string): Promise<AuditEvent[]> {
         const page = await this.pageFor(user);
-        const loaded = this.outcomeOf(page, (r) => r.url().endsWith(`/${id}/audit`));
+        const loaded = this.pageData(page, (r) => r.url().endsWith(`/${id}/audit`));
         await page.goto(`/applications/${id}/audit`);
         await loaded;
         await page.locator('[data-testid="audit-event"]').first().waitFor();
@@ -340,7 +361,7 @@ export class BrowserBackend implements WorkbenchBackend {
         const name = ACTION_BUTTON[action];
         await this.requireButton(page, name);
         const path = action === 'human-review' ? 'human-review' : action;
-        const outcome = this.outcomeOf(page, (r) => r.url().endsWith(`/${id}/${path}`) && r.request().method() === 'POST');
+        const outcome = this.commandOutcome(page, (r) => r.url().endsWith(`/${id}/${path}`) && r.request().method() === 'POST');
         await page.getByRole('button', { name, exact: true }).click();
         await outcome;
         return this.get(user, id);
@@ -351,6 +372,27 @@ export class BrowserBackend implements WorkbenchBackend {
         if (await page.getByRole('button', { name, exact: true }).count()) return;
         const marker = page.locator(`[data-testid="action-unavailable"][data-action="${name}"]`);
         throw new Refusal((await marker.count()) ? String(await marker.getAttribute('data-reason')) : 'NOT_OFFERED');
+    }
+
+    /**
+     * The outcome of a command started by the next click or key press. Client rendering: the API
+     * response. Server rendering: the post/redirect/get target, `?done=` or `?refused=<code>` (DR-017).
+     */
+    private commandOutcome(page: Page, apiCall: (r: import('playwright').Response) => boolean): Promise<unknown> {
+        if (this.settings.rendering === 'client') return this.outcomeOf(page, apiCall);
+        return page
+            .waitForURL((url) => url.searchParams.has('done') || url.searchParams.has('refused'), { timeout: 15_000 })
+            .then(() => {
+                const url = new URL(page.url());
+                const refused = url.searchParams.get('refused');
+                if (refused) throw new Refusal(refused);
+                return { id: decodeURIComponent(url.pathname.split('/').pop() ?? '') };
+            });
+    }
+
+    /** Client rendering loads page data from the browser, so wait for that call; server-rendered HTML arrives with it. */
+    private pageData(page: Page, apiCall: (r: import('playwright').Response) => boolean): Promise<unknown> {
+        return this.settings.rendering === 'client' ? this.outcomeOf(page, apiCall) : Promise.resolve();
     }
 
     /** Waits for the API response a UI action triggers; a problem+json refusal becomes a Refusal. */
@@ -374,6 +416,135 @@ export class BrowserBackend implements WorkbenchBackend {
 
     private async dataValue(locator: Locator): Promise<string> {
         return (await locator.first().getAttribute('data-value')) ?? '';
+    }
+
+    // --- DR-010 on Next.js: captured Server Action forms ------------------------------------------
+
+    /**
+     * Forcing on Next.js: the actor's own browser context posts a Server Action form captured from a
+     * page rendered for a staff member who *is* offered the command. No JavaScript runs, so the post
+     * is a plain HTML form submission and the action answers 303 with its outcome in the Location.
+     */
+    private forgedForms(): WorkbenchBackend {
+        const post = async (user: string | undefined, key: FormKey, applicationId: string, values: Record<string, string> = {}) => {
+            const form = (await this.formsFor()).get(key);
+            if (!form) throw new Error(`No captured form for "${key}"`);
+            const fields = Object.fromEntries(form.fields);
+            if ('applicationId' in fields) fields.applicationId = applicationId;
+            Object.assign(fields, values);
+            const { context } = await this.session(user);
+            const res = await context.request.post(form.routeFor(applicationId), {
+                multipart: fields,
+                headers: { origin: this.settings.baseUrl },
+                maxRedirects: 0,
+            });
+            const location = res.headers()['location'];
+            if (res.status() !== 303 || !location) {
+                throw new Error(`Forged "${key}" form: expected a 303 redirect, got ${res.status()}`);
+            }
+            const target = new URL(location, this.settings.baseUrl);
+            const refused = target.searchParams.get('refused');
+            if (refused) throw new Refusal(refused);
+            return { id: decodeURIComponent(target.pathname.split('/').pop() ?? '') } as Application;
+        };
+        return {
+            surface: `${this.surface} (forced)`,
+            submit: (user, input) => post(user, 'submit', '', Object.fromEntries(this.fieldNames(input))),
+            approve: (user, id) => post(user, 'approve', id),
+            decline: (user, id, reason) => post(user, 'decline', id, { reason }),
+            withdraw: (user, id) => post(user, 'withdraw', id),
+            requestHumanReview: (user, id) => post(user, 'human-review', id),
+            get: (user, id) => this.get(user, id),
+            list: (user) => this.list(user),
+            auditTrail: (user, id) => this.auditTrail(user, id),
+            declineNotice: (user, id) => this.declineNotice(user, id),
+        };
+    }
+
+    private formsFor(): Promise<Map<FormKey, CapturedForm>> {
+        let forms = BrowserBackend.capturedForms.get(this.settings.baseUrl);
+        if (!forms) {
+            forms = this.captureForms();
+            forms.catch(() => BrowserBackend.capturedForms.delete(this.settings.baseUrl));
+            BrowserBackend.capturedForms.set(this.settings.baseUrl, forms);
+        }
+        return forms;
+    }
+
+    /**
+     * Renders every command form for staff who are offered it, in a separate donor namespace so the
+     * scenario's own data and audit trail are untouched, and reads each form from the DOM.
+     */
+    private async captureForms(): Promise<Map<FormKey, CapturedForm>> {
+        const donor = this.api.sibling();
+        const ui = new BrowserBackend(this.browser, donor, this.settings);
+        const forms = new Map<FormKey, CapturedForm>();
+        try {
+            await donor.setClock('2026-10-01T09:00:00Z');
+            await donor.setStaff([
+                { username: 'Olivia', role: 'LOAN_OFFICER' },
+                { username: 'Sam', role: 'SENIOR_UNDERWRITER' },
+            ]);
+            await donor.setCreditScore('donor-open', 800);
+            await donor.setCreditScore('donor-declined', 500);
+            const application = (applicantRef: string): NewApplication => ({
+                applicant: {
+                    applicantRef,
+                    dateOfBirth: '1991-03-15',
+                    netMonthlyIncome: '3000.00',
+                    monthlyCreditCommitments: '450.00',
+                    essentialMonthlyExpenditure: '1200.00',
+                },
+                amount: '5000.00',
+                termMonths: 36,
+                monthlyRepayment: '300.00',
+            });
+            const open = await donor.submit('Olivia', application('donor-open'));
+            const declined = await donor.submit('Olivia', application('donor-declined'));
+            const capture = async (key: FormKey, user: string, applicationId: string | undefined, button: string, reveal?: string) => {
+                const page = await ui.pageFor(user);
+                const path = applicationId ? `/applications/${applicationId}` : '/applications/new';
+                await page.goto(path);
+                if (reveal) await page.getByRole('button', { name: reveal, exact: true }).click();
+                const form = page.locator('form').filter({ has: page.getByRole('button', { name: button, exact: true }) });
+                await form.waitFor({ timeout: 15_000 });
+                const fields = await form.evaluate((element) =>
+                    Array.from((element as HTMLFormElement).elements).flatMap((control) => {
+                        const { name, value } = control as HTMLInputElement;
+                        return name ? [[name, value] as [string, string]] : [];
+                    }),
+                );
+                if (!fields.some(([name]) => name.startsWith('$ACTION_'))) {
+                    throw new Error(`The "${button}" form carries no Server Action reference`);
+                }
+                forms.set(key, {
+                    routeFor: (id) => (applicationId ? `/applications/${encodeURIComponent(id)}` : path),
+                    fields,
+                });
+            };
+            await capture('submit', 'Olivia', undefined, 'Submit application');
+            await capture('withdraw', 'Olivia', open.id, 'Withdraw');
+            await capture('approve', 'Sam', open.id, 'Approve');
+            await capture('decline', 'Sam', open.id, 'Confirm decline', 'Decline');
+            await capture('human-review', 'Olivia', declined.id, 'Request human review');
+            return forms;
+        } finally {
+            await ui.close();
+            await donor.dispose();
+        }
+    }
+
+    private fieldNames(input: NewApplication): [string, string][] {
+        return [
+            ['applicantRef', input.applicant.applicantRef],
+            ['dateOfBirth', input.applicant.dateOfBirth],
+            ['netMonthlyIncome', input.applicant.netMonthlyIncome],
+            ['monthlyCreditCommitments', input.applicant.monthlyCreditCommitments],
+            ['essentialMonthlyExpenditure', input.applicant.essentialMonthlyExpenditure],
+            ['amount', input.amount],
+            ['termMonths', String(input.termMonths)],
+            ['monthlyRepayment', input.monthlyRepayment],
+        ];
     }
 
     private fieldValues(input: NewApplication): [string, string][] {

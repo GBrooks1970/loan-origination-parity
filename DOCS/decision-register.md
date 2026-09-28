@@ -1,10 +1,12 @@
 # Decision Register — Loan Origination Parity
 
-**Last Updated:** 2026-09-27
+**Last Updated:** 2026-09-28
 **Scope:** Phase 0 architectural decisions for the loan origination parity showcase
 **Template:** `templates/decision-record.template.md`
 
 All thirteen records were accepted by the owner on 27 September 2026 ("accept all"), following the Phase 0 review. DR-001, DR-002, DR-009 and DR-013 record owner directions given on 26 September 2026 (UK regime, in-portfolio location, current framework versions, TypeScript harness only).
+
+DR-014, DR-015 and DR-016 were proposed during Phase 2 and accepted by the owner on 28 September 2026 ("accept all").
 
 | DR | Title | Status |
 | :--- | :--- | :--- |
@@ -21,9 +23,11 @@ All thirteen records were accepted by the owner on 27 September 2026 ("accept al
 | DR-011 | Mock only the credit reference agency, inside the Node service | Accepted (2026-09-27) |
 | DR-012 | Fixture identity, not a real identity provider | Accepted (2026-09-27) |
 | DR-013 | TypeScript Serenity/JS harness only | Accepted (2026-09-27) |
-| DR-014 | UIs are served same-origin with the API behind a thin proxy | Proposed (Phase 2) |
-| DR-015 | Action affordances are computed by the server, not re-derived by UIs | Proposed (Phase 2) |
-| DR-016 | Browser surfaces implement the workbench ability with Playwright directly | Proposed (Phase 2) |
+| DR-014 | UIs are served same-origin with the API behind a thin proxy | Accepted (2026-09-28) |
+| DR-015 | Action affordances are computed by the server, not re-derived by UIs | Accepted (2026-09-28) |
+| DR-016 | Browser surfaces implement the workbench ability with Playwright directly | Accepted (2026-09-28) |
+| DR-017 | Next.js commands use post/redirect/get, with the outcome in the redirect target | Proposed (Phase 3) |
+| DR-018 | Forced commands on Next.js replay forms captured in a donor namespace | Proposed (Phase 3) |
 
 ---
 
@@ -285,6 +289,7 @@ Resolved from the npm registry and nodejs.org on 27 September 2026, checked twic
 | Playwright (Phase 2) | 1.63.0 | Re-checked and installed 28 September 2026 |
 | Angular (Phase 2, installed) | 22.2.0 | Re-checked 28 September 2026. **Angular CLI 22.2 requires Node `>=22.22.3` or `>=24.15.0`**, so the workspace `engines` minimum rose from 22.22.2 to 22.22.3. CI uses 24.21.0 from `.nvmrc` |
 | @axe-core/playwright | 4.13.0 | Phase 2 accessibility checks |
+| Next.js / React (Phase 3, installed) | 16.3.6 / 19.3.0 | Re-checked on the npm registry 28 September 2026: unchanged. `@types/react` and `@types/react-dom` 19.3.0. Turbopack production build; no experimental flags |
 
 ---
 
@@ -396,7 +401,7 @@ One harness: TypeScript, Serenity/JS, Cucumber.js, Playwright. Python and C# har
 
 ## DR-014: UIs are served same-origin with the API behind a thin proxy
 
-**Status:** Proposed (Phase 2, 28 September 2026)
+**Status:** Accepted (owner, 2026-09-28)
 **Date:** 2026-09-28
 
 ### Context
@@ -406,6 +411,8 @@ The Angular SPA calls the Node API from the browser (DR-004). Served on differen
 ### Decision
 
 Each UI's build is served by a small Node server (`demo-apps/demoapp002-angular-spa/server.mjs`) that serves the static files, falls back to `index.html` for SPA routes, and proxies `/api/*` and `/health` to the Node service. It forwards only `content-type`, `cookie` and `x-test-namespace`, and relays `set-cookie`. The browser sees one origin.
+
+The Next.js app needs no separate proxy: its own server renders the pages and calls the Node service server-side (DR-004). Its only browser-facing API route is the test-mode fixture sign-in, `POST /api/v1/session`, which forwards to the Node service and relays `set-cookie` (DR-012). The browser still sees one origin.
 
 ### Consequences
 
@@ -421,7 +428,7 @@ Each UI's build is served by a small Node server (`demo-apps/demoapp002-angular-
 
 ## DR-015: Action affordances are computed by the server, not re-derived by UIs
 
-**Status:** Proposed (Phase 2, 28 September 2026)
+**Status:** Accepted (owner, 2026-09-28)
 **Date:** 2026-09-28
 
 ### Context
@@ -446,7 +453,7 @@ The workbench must offer only the actions a user may take and say why others are
 
 ## DR-016: Browser surfaces implement the workbench ability with Playwright directly
 
-**Status:** Proposed (Phase 2, 28 September 2026)
+**Status:** Accepted (owner, 2026-09-28)
 **Date:** 2026-09-28
 
 ### Context
@@ -465,4 +472,61 @@ Tasks and questions depend only on the abstract `OperateTheWorkbench` ability (D
 ### Alternatives Considered
 
 - **Surface-specific Serenity/JS web tasks** — richer reports, but a second set of tasks per UI and step definitions that must choose between them.
+
+---
+
+## DR-017: Next.js commands use post/redirect/get, with the outcome in the redirect target
+
+**Status:** Proposed (Phase 3, 28 September 2026)
+**Date:** 2026-09-28
+
+### Context
+
+On Angular a command's outcome is the API response the browser receives. On Next.js the browser never calls the Node API (DR-004): a Server Action does, on the server. The harness still needs each command's outcome, including the refusal code, and the forced-command path (DR-010) needs a form that works without the React client.
+
+### Decision
+
+Every Server Action delegates to the Node API, calls `revalidatePath('/applications', 'layout')`, then redirects: to the affected page with `?done=<command>` on success, or `?refused=<code>` on a refusal. Pages render the outcome from those parameters: a `role="status"` confirmation, or the same `data-testid="error"` marker, carrying `data-reason`, that Angular uses. With JavaScript, `redirect()` is a client-side navigation. Without it, the action answers `303 See Other` with the same target.
+
+### Consequences
+
+- The harness reads a command's outcome from the URL on Next.js and from the API response on Angular. The choice is made inside `BrowserBackend` (`rendering: 'server' | 'client'`), not in step definitions.
+- Forms work without JavaScript, so a forced command is a plain HTML form submission (DR-018).
+- A refused submission returns an empty form, because the typed values are not echoed back. This is acceptable for a workbench; `useActionState` could keep them later without changing the outcome contract.
+
+### Alternatives Considered
+
+- **`useActionState` with the result in React state** — keeps form values, but a refusal is only visible after hydration, and the forced path would have to decode React Flight responses.
+- **Parse the Server Action response (React Flight)** — couples the harness to an undocumented wire format.
+
+---
+
+## DR-018: Forced commands on Next.js replay forms captured in a donor namespace
+
+**Status:** Proposed (Phase 3, 28 September 2026). Refines how DR-010 is carried out; DR-010's decision is unchanged.
+**Date:** 2026-09-28
+
+### Context
+
+DR-010 says the harness opens *the target application* as a staff member who is offered the command and captures that form. Several refusal scenarios force a command that nobody is offered on the target application: approving an expired application, withdrawing an approved one, or requesting a review after the window has closed. There is no form to capture there. Creating a helper application in the scenario's namespace would add records and audit events the scenario did not ask for.
+
+### Decision
+
+Once per run, the harness creates a separate donor namespace (DR-005) with a loan officer and a senior underwriter, submits one open and one declined application, and renders each command's form for a staff member who is offered it:
+
+- **Olivia:** submit, withdraw, request human review.
+- **Sam:** approve, and decline after revealing the reason form.
+
+From the DOM it reads every named field, including React's `$ACTION_ID_…` reference. To force a command, the forcing actor's own browser context (their cookies, their namespace) posts that form as `multipart/form-data`, with `applicationId` set to the target and no JavaScript. It posts to the target's page route with an `Origin` header matching the host, and reads the `303` Location: `?refused=<code>` is the refusal.
+
+### Consequences
+
+- Action IDs come only from rendered pages at run time, never from build output. The realistic threat is kept: any member of staff can read an action ID from a page they are shown, then point it at another application.
+- The scenario's data and audit trail contain only what the scenario arranged.
+- The capture costs one set-up per run (one namespace, two applications, five page renders), not one per scenario.
+
+### Alternatives Considered
+
+- **Capture from the target application only (DR-010 as worded)** — impossible for commands nobody is offered there.
+- **A helper application in the scenario namespace** — pollutes queues and audit trails that scenarios assert on.
 

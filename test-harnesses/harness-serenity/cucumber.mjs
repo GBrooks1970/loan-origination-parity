@@ -19,14 +19,23 @@ export const api = {
     format: [...common.format, 'message:reports/api.ndjson'],
 };
 
+const allFolders = [
+    '../../features-shared/domain-rules/**/*.feature',
+    '../../features-shared/workflows/**/*.feature',
+    '../../features-shared/ui-only/**/*.feature',
+];
+
+/** Browser surfaces run every folder (spec §10.1). */
 export const angular = {
     ...common,
-    paths: [
-        '../../features-shared/domain-rules/**/*.feature',
-        '../../features-shared/workflows/**/*.feature',
-        '../../features-shared/ui-only/**/*.feature',
-    ],
+    paths: allFolders,
     format: [...common.format, 'message:reports/angular.ndjson'],
+};
+
+export const nextjs = {
+    ...common,
+    paths: allFolders,
+    format: [...common.format, 'message:reports/nextjs.ndjson'],
 };
 
 export default core;

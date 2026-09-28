@@ -1,11 +1,11 @@
 # Loan Origination Parity — Platform Specification
 
-**Version:** v1.4
+**Version:** v1.5
 **Date:** 2026-09-28
 **Status:** Approved — Phase 0 contract accepted by the owner on 27 September 2026
 **Supersedes (for Alpha only):** PRJ-01 in `project-specs/potential-project-outlines/nodejs-angular-multi-stack-parity-outlines.md` (V1) and `…-tri-stack-parity-outlines-v2.md` (V2)
 **Derived from:** `project-specs/potential-project-outlines/multi-stack-parity-outlines-critique.md` §2.1, §2.4, §5
-**Decisions:** [`../decision-register.md`](../decision-register.md) (DR-001 – DR-013, all Accepted)
+**Decisions:** [`../decision-register.md`](../decision-register.md) (DR-001 – DR-016 Accepted; DR-017 and DR-018 Proposed in Phase 3)
 **API contract:** [`../.architecture/openapi.yaml`](../.architecture/openapi.yaml)
 
 ---
@@ -328,7 +328,9 @@ Locator contract (DR-007):
 
 - Every route that reads application data is dynamic (`await connection()` or a literal `export const dynamic = 'force-dynamic'`). `next build` must succeed with the Node service offline.
 - Server Actions delegate to the Node API and then call `revalidatePath` for the affected routes.
-- Server Actions are exercised only through the browser. The forced-command steps submit an action form captured at run time from a page rendered for a staff member who is offered it (DR-010).
+- Each Server Action then redirects (post/redirect/get): to the affected page with `?done=<command>`, or with `?refused=<code>`, which the page renders as the `data-testid="error"` marker with `data-reason` (DR-017). Forms therefore work without JavaScript.
+- Server Actions are exercised only through the browser. The forced-command steps submit an action form captured at run time from a page rendered for a staff member who is offered it (DR-010), in a separate donor namespace (DR-018).
+- Test mode is a runtime switch on the Next.js server (`LOP_TEST_MODE=1`): it enables the fixture sign-in page, the `POST /api/v1/session` route and namespace forwarding. The browser never calls the Node API.
 
 ---
 
@@ -461,6 +463,10 @@ Every expected value in `features-shared/` was computed with [`../../tools/check
 
 - `REASON_REQUIRED` (422) added for a blank manual-decline reason. §6.2 already required a reason but did not name the refusal.
 - The HTTP layer returns `400 INVALID_REQUEST` for a malformed body or a missing test-mode namespace, `404 NOT_FOUND` for an unknown application or route, and `500 INTERNAL_ERROR`. OpenAPI 1.1.0 declares all three, plus `GET /health`.
+
+### Amendments in v1.5 (Phase 3, 28 September 2026)
+
+- §10.3: Server Actions post/redirect/get with the outcome in the redirect target (DR-017); forced commands replay forms captured in a donor namespace (DR-018); test mode on Next.js is a runtime switch. DR-014 – DR-016 accepted by the owner.
 
 ### Amendments in v1.4 (Phase 2, 28 September 2026)
 

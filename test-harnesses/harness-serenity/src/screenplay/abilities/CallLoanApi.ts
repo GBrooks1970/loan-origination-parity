@@ -25,6 +25,11 @@ export class ApiBackend implements WorkbenchBackend, TestControlBackend {
 
     constructor(private readonly settings: ApiSettings) {}
 
+    /** A fresh namespace on the same service, isolated from this one (DR-005). */
+    sibling(): ApiBackend {
+        return new ApiBackend(this.settings);
+    }
+
     // --- workbench ------------------------------------------------------------------------------
 
     submit = (user: string | undefined, input: NewApplication) =>

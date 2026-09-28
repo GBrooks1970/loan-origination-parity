@@ -8,11 +8,11 @@ import { join, relative } from 'node:path';
 const root = new URL('..', import.meta.url).pathname;
 const reports = join(root, 'test-harnesses/harness-serenity/reports');
 
-/** Which surfaces target which folder (spec §10.1). Next.js joins in Phase 3. */
+/** Which surfaces target which folder (spec §10.1). */
 const REACH = {
-    'domain-rules': ['core', 'api', 'angular'],
-    workflows: ['api', 'angular'],
-    'ui-only': ['angular'],
+    'domain-rules': ['core', 'api', 'angular', 'nextjs'],
+    workflows: ['api', 'angular', 'nextjs'],
+    'ui-only': ['angular', 'nextjs'],
 };
 
 const failures = [];
@@ -81,13 +81,13 @@ function expandedScenarioCount(folder) {
     return count;
 }
 
-const bySurface = Object.fromEntries(['core', 'api', 'angular'].map((s) => [s, results(s)]));
+const bySurface = Object.fromEntries(['core', 'api', 'angular', 'nextjs'].map((s) => [s, results(s)]));
 const rows = [];
 for (const [folder, surfaces] of Object.entries(REACH)) {
     const expected = expandedScenarioCount(folder);
     for (const surface of surfaces) {
         const r = bySurface[surface].get(folder) ?? { passed: 0, total: 0 };
-        rows.push(`${folder.padEnd(14)} ${surface.padEnd(5)} ${String(r.passed).padStart(3)} passed / ${String(r.total).padStart(3)} run / ${expected} in Gherkin`);
+        rows.push(`${folder.padEnd(14)} ${surface.padEnd(7)} ${String(r.passed).padStart(3)} passed / ${String(r.total).padStart(3)} run / ${expected} in Gherkin`);
         if (r.passed !== expected || r.total !== expected) {
             failures.push(`${folder} on ${surface}: ${r.passed}/${r.total} passed, Gherkin has ${expected}`);
         }
@@ -97,7 +97,7 @@ for (const [folder, surfaces] of Object.entries(REACH)) {
 const stepDir = join(root, 'test-harnesses/harness-serenity/src/step-definitions');
 for (const file of readdirSync(stepDir)) {
     const text = readFileSync(join(stepDir, file), 'utf8');
-    if (/SURFACE|surfaceName|CallDomainCore|CallLoanApi|BrowseTheWorkbench|BrowserBackend/.test(text)) {
+    if (/SURFACE|surfaceName|CallDomainCore|CallLoanApi|BrowseTheWorkbench|BrowserBackend|nextjs|angular/.test(text)) {
         failures.push(`step definitions must not branch on surface: ${file}`);
     }
 }

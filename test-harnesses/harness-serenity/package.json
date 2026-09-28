@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:core": "cross-env SURFACE=core NODE_OPTIONS=--import=tsx cucumber-js --profile core",
     "test:api": "cross-env SURFACE=api NODE_OPTIONS=--import=tsx cucumber-js --profile api",
-    "test:angular": "cross-env SURFACE=angular NODE_OPTIONS=--import=tsx cucumber-js --profile angular"
+    "test:angular": "cross-env SURFACE=angular NODE_OPTIONS=--import=tsx cucumber-js --profile angular",
+    "test:nextjs": "cross-env SURFACE=nextjs NODE_OPTIONS=--import=tsx cucumber-js --profile nextjs"
   },
   "dependencies": {
     "@lop/domain-core": "0.1.0"

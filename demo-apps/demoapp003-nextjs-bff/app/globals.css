@@ -1,0 +1,41 @@
+/* Plain CSS (owner decisions, Phases 2 and 3): the same stylesheet as the Angular workbench. WCAG 2.2 AA contrast. */
+:root {
+    --ink: #1b1f24;
+    --muted: #4a5561;
+    --accent: #0b5cad;
+    --accent-ink: #ffffff;
+    --error: #a4161a;
+    --line: #c9d1d9;
+    --surface: #ffffff;
+    --band: #f3f5f7;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--surface);
+    line-height: 1.5;
+}
+body { margin: 0; }
+.banner { display: flex; gap: 2rem; align-items: center; padding: 0.75rem 1.5rem; background: var(--band); border-bottom: 1px solid var(--line); }
+.brand { font-weight: 600; margin: 0; }
+nav a { color: var(--accent); }
+main { padding: 1.5rem; max-width: 60rem; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+caption { text-align: left; color: var(--muted); padding-bottom: 0.25rem; }
+th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 0.4rem 0.6rem; }
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; }
+fieldset { border: 1px solid var(--line); margin: 0 0 1rem; padding: 0.75rem 1rem; }
+label { display: block; margin-top: 0.6rem; }
+input, textarea { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid var(--muted); border-radius: 3px; min-width: 16rem; }
+button, .button { font: inherit; background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 3px; padding: 0.45rem 0.9rem; cursor: pointer; text-decoration: none; display: inline-block; margin: 0.5rem 0.5rem 0 0; }
+button[disabled] { opacity: 0.6; cursor: default; }
+.actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1rem; }
+.unavailable { color: var(--muted); margin: 0.5rem 0; }
+.error { color: var(--error); font-weight: 600; }
+code { font-size: 0.85em; word-break: break-all; }
+/* Next.js only: each command is its own <form> (Server Actions), laid out like the Angular buttons. */
+form.command { display: inline; margin: 0; }
+.actions form.decline { flex-basis: 100%; }
+.notice { color: var(--ink); font-weight: 600; }
