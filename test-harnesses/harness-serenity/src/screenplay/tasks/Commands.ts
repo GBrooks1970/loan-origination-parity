@@ -9,8 +9,9 @@ export type CommandName = 'approve' | 'decline' | 'withdraw' | 'request human re
 /** Used when a forced decline needs a reason; the reason is never what the scenario is about. */
 const FORCED_DECLINE_REASON = 'Forced by the test harness';
 
-function perform(actor: UsesAbilities, command: CommandName, reason?: string) {
-    const workbench = OperateTheWorkbench.as(actor);
+function perform(actor: UsesAbilities, command: CommandName, reason?: string, route: 'screens' | 'arranging' | 'forcing' = 'screens') {
+    const ability = OperateTheWorkbench.as(actor);
+    const workbench = route === 'arranging' ? ability.arranging() : route === 'forcing' ? ability.forcing() : ability;
     const id = scenario().requireApplicationId();
     switch (command) {
         case 'approve':
@@ -33,6 +34,14 @@ export const CarryOut = {
                 await perform(actor, command, reason);
             }),
         ),
+    /** A precondition ("Liam has approved the application"): arranged through the engine or API. */
+    asPrecondition: (command: CommandName, reason?: string) =>
+        Task.where(
+            `#actor has carried out "${command}" on the application`,
+            Interaction.where(`#actor has ${command}d the application`, async (actor) => {
+                await perform(actor, command, reason, 'arranging');
+            }),
+        ),
 };
 
 /**
@@ -47,7 +56,7 @@ export const Force = {
                 const state = scenario();
                 state.lastRefusal = undefined;
                 try {
-                    await perform(actor, command);
+                    await perform(actor, command, undefined, 'forcing');
                 } catch (error) {
                     if (!(error instanceof Refusal)) throw error;
                     state.lastRefusal = error.code;

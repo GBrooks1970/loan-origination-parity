@@ -4,7 +4,7 @@
   "description": "UK loan origination workbench: one domain engine, four surfaces, one Serenity/JS Screenplay harness.",
   "license": "MIT",
   "engines": {
-    "node": "^22.22.2 || ^24.15.0"
+    "node": "^22.22.3 || ^24.15.0"
   },
   "workspaces": [
     "packages/*",
@@ -19,7 +19,8 @@
     "test:core": "npm run build:core && npm run test:core -w @lop/harness-serenity",
     "test:api": "node tools/run-api-suite.mjs",
     "check:parity": "node tools/check-parity.mjs",
-    "verify": "npm run typecheck && npm run test:unit && npm run check:oracle && npm run test:core && npm run test:api && npm run check:parity",
-    "build:core": "npm run build -w @lop/domain-core"
+    "verify": "npm run typecheck && npm run test:unit && npm run check:oracle && npm run test:core && npm run test:api && npm run test:angular && npm run check:parity",
+    "build:core": "npm run build -w @lop/domain-core",
+    "test:angular": "node tools/run-ui-suite.mjs angular"
   }
 }

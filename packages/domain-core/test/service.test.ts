@@ -208,6 +208,28 @@ describe('LoanOriginationService', () => {
         });
     });
 
+    describe('available actions (server-computed affordances)', () => {
+        it('reports each command with the code it would be refused with, writing no audit event', () => {
+            const app = service.submit('Olivia', standard({ amount: '15000.00', monthlyRepayment: '360.00' }));
+            const before = ports.audit.all().length;
+            assert.deepEqual(service.availableActions('Liam', app.id), {
+                approve: { available: false, reason: 'LIMIT_EXCEEDED' },
+                decline: { available: false, reason: 'LIMIT_EXCEEDED' },
+                withdraw: { available: false, reason: 'NOT_APPLICATION_OWNER' },
+                requestHumanReview: { available: false, reason: 'INVALID_STATE' },
+            });
+            assert.deepEqual(service.availableActions('Uma', app.id).approve, { available: true });
+            assert.deepEqual(service.availableActions('Olivia', app.id).approve, { available: false, reason: 'SELF_APPROVAL' });
+            assert.deepEqual(service.availableActions('Aled', app.id).approve, { available: false, reason: 'ROLE_NOT_PERMITTED' });
+            assert.equal(ports.audit.all().length, before);
+        });
+
+        it('reports whether a member of staff may submit', () => {
+            assert.deepEqual(service.staffActions('Olivia'), { submit: { available: true } });
+            assert.deepEqual(service.staffActions('Aled'), { submit: { available: false, reason: 'ROLE_NOT_PERMITTED' } });
+        });
+    });
+
     describe('roles', () => {
         it('takes a role change into account on the next command', () => {
             const app = service.submit('Olivia', standard({ amount: '15000.00', monthlyRepayment: '360.00' }));

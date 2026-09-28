@@ -6,11 +6,14 @@ import type { Ports } from './ports.js';
 import { RULE_SET_VERSION, evaluate } from './rules.js';
 import { addDays } from './time.js';
 import type {
+    ActionAvailability,
     Application,
+    ApplicationActions,
     AuditEvent,
     Command,
     DeclineNotice,
     NewApplication,
+    StaffActions,
     StaffMember,
     Status,
 } from './types.js';
@@ -161,6 +164,33 @@ export class LoanOriginationService {
         return this.ports.audit.forApplication(id);
     }
 
+    /**
+     * Dry run of the §7.2 checks for every command on this application: what a UI may offer and,
+     * if not, why. Writes no audit event; lazy expiry still applies, as on any read.
+     */
+    availableActions(actor: string | undefined, id: string): ApplicationActions {
+        const staff = this.readAs(actor);
+        const application = this.load(id);
+        const now = this.ports.clock.now();
+        const reviewWindowEnds = application.decidedAt
+            ? addDays(new Date(application.decidedAt), REVIEW_WINDOW_DAYS)
+            : null;
+        const probe = (command: ApplicationCommand): ActionAvailability =>
+            dryRun(() => checkCommand(staff, command, application, now, reviewWindowEnds));
+        return {
+            approve: probe('approve'),
+            decline: probe('decline'),
+            withdraw: probe('withdraw'),
+            requestHumanReview: probe('request human review'),
+        };
+    }
+
+    /** Dry run of whether the actor may submit applications at all. */
+    staffActions(actor: string | undefined): StaffActions {
+        const staff = this.readAs(actor);
+        return { submit: dryRun(() => checkRole(staff, 'submit')) };
+    }
+
     declineNotice(actor: string | undefined, id: string): DeclineNotice {
         this.readAs(actor);
         const application = this.load(id);
@@ -269,6 +299,18 @@ export class LoanOriginationService {
         payload: Record<string, unknown>,
     ): void {
         this.ports.audit.append({ type, at: this.ports.clock.now().toISOString(), actor, applicationId, payload });
+    }
+}
+
+function dryRun(check: () => void): ActionAvailability {
+    try {
+        check();
+        return { available: true };
+    } catch (error) {
+        if (error instanceof DomainError && error.code !== 'NOT_FOUND') {
+            return { available: false, reason: error.code as Extract<ActionAvailability, { available: false }>['reason'] };
+        }
+        throw error;
     }
 }
 

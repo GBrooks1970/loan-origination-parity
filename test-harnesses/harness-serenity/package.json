@@ -8,12 +8,14 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:core": "cross-env SURFACE=core NODE_OPTIONS=--import=tsx cucumber-js --profile core",
-    "test:api": "cross-env SURFACE=api NODE_OPTIONS=--import=tsx cucumber-js --profile api"
+    "test:api": "cross-env SURFACE=api NODE_OPTIONS=--import=tsx cucumber-js --profile api",
+    "test:angular": "cross-env SURFACE=angular NODE_OPTIONS=--import=tsx cucumber-js --profile angular"
   },
   "dependencies": {
     "@lop/domain-core": "0.1.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@cucumber/cucumber": "13.2.1",
     "@serenity-js/assertions": "3.48.0",
     "@serenity-js/console-reporter": "3.48.0",
@@ -21,6 +23,7 @@
     "@serenity-js/cucumber": "3.48.0",
     "@types/node": "24.19.0",
     "cross-env": "10.1.0",
+    "playwright": "1.63.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3"
   }

@@ -19,7 +19,7 @@ When(
 async function haveSubmitted(name: string, fixture: Fixture) {
     await actorCalled(STAGE_MANAGER).attemptsTo(RegisterApplicant.with(fixture.applicant));
     await actorCalled(name).attemptsTo(
-        SubmitApplication.for(fixture.terms),
+        SubmitApplication.asPrecondition(fixture.terms),
         Ensure.that(TheApplication.status(), equals(fixture.expectedStatus)),
     );
 }
@@ -34,12 +34,14 @@ Given('{actor} has submitted an application that was declined', (name: string) =
     haveSubmitted(name, Fixtures.declinedApplication()),
 );
 
-Given('{actor} has approved the application', (name: string) => actorCalled(name).attemptsTo(CarryOut.the('approve')));
+Given('{actor} has approved the application', (name: string) =>
+    actorCalled(name).attemptsTo(CarryOut.asPrecondition('approve')),
+);
 Given('{actor} has declined the application with the reason {string}', (name: string, reason: string) =>
-    actorCalled(name).attemptsTo(CarryOut.the('decline', reason)),
+    actorCalled(name).attemptsTo(CarryOut.asPrecondition('decline', reason)),
 );
 Given('{actor} has requested a human review of the application', (name: string) =>
-    actorCalled(name).attemptsTo(CarryOut.the('request human review')),
+    actorCalled(name).attemptsTo(CarryOut.asPrecondition('request human review')),
 );
 
 When('{actor} approves the application', (name: string) => actorCalled(name).attemptsTo(CarryOut.the('approve')));

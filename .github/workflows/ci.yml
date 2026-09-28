@@ -14,9 +14,9 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify (unit, contract, oracle, core + API surfaces, parity)
+    name: Verify (unit, contract, oracle, core + API + Angular surfaces, parity)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,6 +50,12 @@ jobs:
 
       - name: API surface
         run: npm run test:api
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Angular surface
+        run: npm run test:angular
 
       - name: Parity gate
         run: npm run check:parity

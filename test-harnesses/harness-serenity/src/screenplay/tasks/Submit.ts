@@ -14,10 +14,9 @@ export interface LoanTerms {
  * Submits the registered applicant's application. A refusal is recorded, not thrown,
  * so "the submission is refused with reason …" can assert it.
  */
-export const SubmitApplication = {
-    for: (terms: LoanTerms) =>
+const submission = (terms: LoanTerms, route: 'screens' | 'arranging') =>
         Task.where(
-            `#actor submits an application for ${terms.amount} over ${terms.termMonths} months`,
+            `#actor ${route === 'arranging' ? 'has submitted' : 'submits'} an application for ${terms.amount} over ${terms.termMonths} months`,
             Interaction.where('#actor submits the application', async (actor) => {
                 const state = scenario();
                 const applicant = state.pendingApplicant;
@@ -28,12 +27,19 @@ export const SubmitApplication = {
                 state.observer = workbench.username;
                 state.lastRefusal = undefined;
                 try {
-                    const application = await workbench.submit({ applicant, ...terms });
+                    const via = route === 'arranging' ? workbench.arranging() : workbench;
+                    const application = await via.submit({ applicant, ...terms });
                     state.currentApplicationId = application.id;
                 } catch (error) {
                     if (!(error instanceof Refusal)) throw error;
                     state.lastRefusal = error.code;
                 }
             }),
-        ),
+        );
+
+export const SubmitApplication = {
+    /** The actor keys and submits the application on this surface. */
+    for: (terms: LoanTerms) => submission(terms, 'screens'),
+    /** A precondition: arranged through the engine or API on every surface. */
+    asPrecondition: (terms: LoanTerms) => submission(terms, 'arranging'),
 };

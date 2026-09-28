@@ -8,10 +8,11 @@ import { join, relative } from 'node:path';
 const root = new URL('..', import.meta.url).pathname;
 const reports = join(root, 'test-harnesses/harness-serenity/reports');
 
-/** Which surfaces target which folder (spec §10.1). Phase 1 surfaces only; UIs join in Phases 2–3. */
+/** Which surfaces target which folder (spec §10.1). Next.js joins in Phase 3. */
 const REACH = {
-    'domain-rules': ['core', 'api'],
-    workflows: ['api'],
+    'domain-rules': ['core', 'api', 'angular'],
+    workflows: ['api', 'angular'],
+    'ui-only': ['angular'],
 };
 
 const failures = [];
@@ -80,7 +81,7 @@ function expandedScenarioCount(folder) {
     return count;
 }
 
-const bySurface = Object.fromEntries(['core', 'api'].map((s) => [s, results(s)]));
+const bySurface = Object.fromEntries(['core', 'api', 'angular'].map((s) => [s, results(s)]));
 const rows = [];
 for (const [folder, surfaces] of Object.entries(REACH)) {
     const expected = expandedScenarioCount(folder);
@@ -96,7 +97,7 @@ for (const [folder, surfaces] of Object.entries(REACH)) {
 const stepDir = join(root, 'test-harnesses/harness-serenity/src/step-definitions');
 for (const file of readdirSync(stepDir)) {
     const text = readFileSync(join(stepDir, file), 'utf8');
-    if (/SURFACE|surfaceName|CallDomainCore|CallLoanApi/.test(text)) {
+    if (/SURFACE|surfaceName|CallDomainCore|CallLoanApi|BrowseTheWorkbench|BrowserBackend/.test(text)) {
         failures.push(`step definitions must not branch on surface: ${file}`);
     }
 }

@@ -83,6 +83,11 @@ export function createApp(config: ServiceConfig) {
         res.json(staff);
     });
 
+    api.get('/me/actions', (req, res) => {
+        const { namespace, user } = context(req);
+        res.json(namespace.service.staffActions(user));
+    });
+
     api.get('/applications', (req, res) => {
         const { namespace, user } = context(req);
         const status = req.query.status;
@@ -120,6 +125,11 @@ export function createApp(config: ServiceConfig) {
     api.post('/applications/:id/human-review', (req, res) => {
         const { namespace, user } = context(req);
         res.json(namespace.service.requestHumanReview(user, req.params.id));
+    });
+
+    api.get('/applications/:id/actions', (req, res) => {
+        const { namespace, user } = context(req);
+        res.json(namespace.service.availableActions(user, req.params.id));
     });
 
     api.get('/applications/:id/audit', (req, res) => {

@@ -1,6 +1,6 @@
 # Loan Origination Parity
 
-**Status:** Phase 1 (headless system under test) — complete; Phase 2 not started
+**Status:** Phase 2 (Angular workbench) — in review; Phase 1 complete
 **Origin:** seeded from `project-specs/loan-origination-parity/` in [`test-automation-portfolio`](https://github.com/GBrooks1970/test-automation-portfolio) at `e4b915d` (DR-001)
 **Why this project:** [`multi-stack-parity-outlines-critique.md`](https://github.com/GBrooks1970/test-automation-portfolio/blob/main/project-specs/potential-project-outlines/multi-stack-parity-outlines-critique.md) §5
 
@@ -14,43 +14,49 @@ The rules are modelled on UK consumer credit obligations and simplified for test
 | :--- | :--- | :--- | :--- |
 | Domain core (in-process) | [`packages/domain-core`](packages/domain-core) | 1 | Built |
 | Node.js REST API | [`demo-apps/demoapp001-node-service`](demo-apps/demoapp001-node-service) | 1 | Built |
-| Angular SPA | `demo-apps/demoapp002-angular-spa` | 2 | Not started |
+| Angular SPA (underwriter workbench) | [`demo-apps/demoapp002-angular-spa`](demo-apps/demoapp002-angular-spa) | 2 | Built |
 | Next.js backend-for-frontend | `demo-apps/demoapp003-nextjs-bff` | 3 | Not started |
 
-## Results (27 September 2026, local run of `npm run verify`)
+## Results (28 September 2026, clean `npm run verify`, exit 0 in 135 s)
 
 | Check | Result |
 | :--- | :--- |
-| domain-core unit tests | 21 / 21 pass |
-| Node service contract tests (responses validated against OpenAPI) | 4 / 4 pass, 16 response bodies schema-checked |
+| domain-core unit tests | 23 / 23 pass |
+| Node service contract tests (responses validated against OpenAPI 1.3.0) | 4 / 4 pass |
 | Expected-value oracle | 99 values across 40 scenarios agree |
-| `features-shared/domain-rules` on domain core | 33 / 33 scenarios pass |
-| `features-shared/domain-rules` + `workflows` on API | 85 / 85 scenarios pass |
-| Parity gate | PASS |
-| Per-scenario set-up on the API surface | p50 4.08 ms, p95 6.55 ms, max 51.33 ms (target under 200 ms) |
+| Domain core surface: `domain-rules` | 33 / 33 |
+| API surface: `domain-rules` + `workflows` | 85 / 85 |
+| Angular surface: `domain-rules` + `workflows` + `ui-only` | 106 / 106 (1 m 32 s) |
+| Parity gate (three surfaces, per folder) | PASS |
+| Per-scenario set-up, API / Angular | p50 3.99 / 4.42 ms, p95 6.96 / 7.99 ms (target under 200 ms) |
 
 ## Run it
 
-Requires Node.js 24 LTS (see `.nvmrc`; Node 22.22.2+ also works) and Python 3 for the oracle.
+Requires Node.js 24 LTS (see `.nvmrc`; Node 22.22.3+ also works: Angular CLI 22.2 needs it) and Python 3 for the oracle.
 
 ```
 npm ci
 pip install gherkin-official==42.0.1
+npx playwright install chromium        # or set PLAYWRIGHT_CHROMIUM_EXECUTABLE to an existing Chromium
 npm run verify
 ```
 
-`verify` runs typecheck, unit and contract tests, the oracle, both surfaces and the parity gate. Individual steps: `npm run test:core`, `npm run test:api` (starts the Node service in test mode for the run), `npm run check:parity`.
+`verify` runs typecheck, unit and contract tests, the oracle, all three surfaces and the parity gate. Individual steps:
+- `npm run test:core`
+- `npm run test:api`: starts the Node service in test mode for the run.
+- `npm run test:angular`: builds the SPA with the test configuration and starts the Node service and the SPA's same-origin server. Cucumber arguments go after `--`, e.g. `node tools/run-ui-suite.mjs angular -- --name "Decline notice"`.
+- `npm run check:parity`
 
 ## Layout
 
 | Path | What it is |
 | :--- | :--- |
-| [`DOCS/.design/loan-origination-platform-specification.md`](DOCS/.design/loan-origination-platform-specification.md) | The platform specification (v1.3) |
-| [`DOCS/decision-register.md`](DOCS/decision-register.md) | DR-001 – DR-013, all Accepted; DR-009 records resolved versions |
-| [`DOCS/.architecture/openapi.yaml`](DOCS/.architecture/openapi.yaml) | OpenAPI 3.1 contract (1.2.0) |
+| [`DOCS/.design/loan-origination-platform-specification.md`](DOCS/.design/loan-origination-platform-specification.md) | The platform specification (v1.4) |
+| [`DOCS/decision-register.md`](DOCS/decision-register.md) | DR-001 – DR-013 Accepted; DR-014 – DR-016 Proposed in Phase 2; DR-009 records resolved versions |
+| [`DOCS/.architecture/openapi.yaml`](DOCS/.architecture/openapi.yaml) | OpenAPI 3.1 contract (1.3.0) |
 | [`features-shared/`](features-shared/) | 19 feature files: `domain-rules/` (33), `workflows/` (52), `ui-only/` (21) |
-| [`test-harnesses/harness-serenity/`](test-harnesses/harness-serenity/) | Screenplay harness: `CallDomainCore` and `CallLoanApi` implement one abstract `OperateTheWorkbench` ability |
-| [`tools/`](tools/) | Oracle, API-suite runner, parity gate |
+| [`test-harnesses/harness-serenity/`](test-harnesses/harness-serenity/) | Screenplay harness: `CallDomainCore`, `CallLoanApi` and `BrowseTheWorkbench` implement one abstract `OperateTheWorkbench` ability; `UseTheScreens` adds UI-only interactions |
+| [`tools/`](tools/) | Oracle, API and UI suite runners, parity gate |
 | [`docs/walkthroughs/`](docs/walkthroughs/) | Dated delivery records |
 
 ## Licence

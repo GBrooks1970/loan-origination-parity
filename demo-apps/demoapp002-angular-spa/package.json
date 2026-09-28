@@ -1,0 +1,31 @@
+{
+  "name": "@lop/demoapp002-angular-spa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stack 2: Angular underwriter workbench (client-rendered SPA over the Node API).",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "ng build --configuration production",
+    "build:test": "ng build --configuration test",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "serve:test": "node server.mjs"
+  },
+  "dependencies": {
+    "@angular/common": "22.2.0",
+    "@angular/compiler": "22.2.0",
+    "@angular/core": "22.2.0",
+    "@angular/forms": "22.2.0",
+    "@angular/platform-browser": "22.2.0",
+    "@angular/router": "22.2.0",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "22.2.0",
+    "@angular/cli": "22.2.0",
+    "@angular/compiler-cli": "22.2.0",
+    "@lop/domain-core": "0.1.0",
+    "typescript": "6.0.3"
+  }
+}

@@ -21,6 +21,9 @@ All thirteen records were accepted by the owner on 27 September 2026 ("accept al
 | DR-011 | Mock only the credit reference agency, inside the Node service | Accepted (2026-09-27) |
 | DR-012 | Fixture identity, not a real identity provider | Accepted (2026-09-27) |
 | DR-013 | TypeScript Serenity/JS harness only | Accepted (2026-09-27) |
+| DR-014 | UIs are served same-origin with the API behind a thin proxy | Proposed (Phase 2) |
+| DR-015 | Action affordances are computed by the server, not re-derived by UIs | Proposed (Phase 2) |
+| DR-016 | Browser surfaces implement the workbench ability with Playwright directly | Proposed (Phase 2) |
 
 ---
 
@@ -279,7 +282,9 @@ Resolved from the npm registry and nodejs.org on 27 September 2026, checked twic
 | @types/node | 24.19.0 | Matches the Node 24 LTS line |
 | Angular (Phase 2) | 22.2.0 | Recorded now; installed in Phase 2 after re-checking |
 | Next.js / React (Phase 3) | 16.3.6 / 19.3.0 | Recorded now; installed in Phase 3 after re-checking |
-| Playwright (Phase 2) | 1.63.0 | Recorded now; installed in Phase 2 after re-checking |
+| Playwright (Phase 2) | 1.63.0 | Re-checked and installed 28 September 2026 |
+| Angular (Phase 2, installed) | 22.2.0 | Re-checked 28 September 2026. **Angular CLI 22.2 requires Node `>=22.22.3` or `>=24.15.0`**, so the workspace `engines` minimum rose from 22.22.2 to 22.22.3. CI uses 24.21.0 from `.nvmrc` |
+| @axe-core/playwright | 4.13.0 | Phase 2 accessibility checks |
 
 ---
 
@@ -386,3 +391,78 @@ One harness: TypeScript, Serenity/JS, Cucumber.js, Playwright. Python and C# har
 ### Alternatives Considered
 
 - **Sudoku-style multi-language harnesses** — triples harness work for a claim Sudoku already makes.
+
+---
+
+## DR-014: UIs are served same-origin with the API behind a thin proxy
+
+**Status:** Proposed (Phase 2, 28 September 2026)
+**Date:** 2026-09-28
+
+### Context
+
+The Angular SPA calls the Node API from the browser (DR-004). Served on different ports, that needs CORS with credentials and cross-site cookie handling, all incidental to the domain.
+
+### Decision
+
+Each UI's build is served by a small Node server (`demo-apps/demoapp002-angular-spa/server.mjs`) that serves the static files, falls back to `index.html` for SPA routes, and proxies `/api/*` and `/health` to the Node service. It forwards only `content-type`, `cookie` and `x-test-namespace`, and relays `set-cookie`. The browser sees one origin.
+
+### Consequences
+
+- No CORS configuration; the session cookie stays first-party.
+- The proxy is part of the UI surface under test. It is deliberately minimal and holds no logic.
+
+### Alternatives Considered
+
+- **CORS with credentials between :4200 and :8000** — extra configuration and cookie edge cases that test nothing about lending.
+- **Angular dev-server proxy** — dev servers are for the inner loop; CI runs production-style builds.
+
+---
+
+## DR-015: Action affordances are computed by the server, not re-derived by UIs
+
+**Status:** Proposed (Phase 2, 28 September 2026)
+**Date:** 2026-09-28
+
+### Context
+
+The workbench must offer only the actions a user may take and say why others are unavailable (`ui-only/role-based-affordances.feature`). Re-implementing the §7.2 checks in each UI would duplicate the rules (against DR-004). The review-window check also depends on the server's virtual clock, which a browser cannot see.
+
+### Decision
+
+`domain-core` exposes `availableActions()` and `staffActions()`, a dry run of the §7.2 checks that writes no audit event. The Node service serves them as `GET /api/v1/applications/{id}/actions` and `GET /api/v1/me/actions` (OpenAPI 1.3.0). UIs render a button when an action is available and otherwise an `action-unavailable` marker carrying the code.
+
+### Consequences
+
+- One source of authorisation truth; Next.js reuses the same endpoints in Phase 3.
+- A UI cannot drift from enforcement, because affordance and enforcement run the same checks.
+
+### Alternatives Considered
+
+- **Duplicate the checks in each UI** — drift risk, and the review-window check would be wrong under a virtual clock.
+- **Embed actions in the Application resource** — mixes a per-user view into a shared resource.
+
+---
+
+## DR-016: Browser surfaces implement the workbench ability with Playwright directly
+
+**Status:** Proposed (Phase 2, 28 September 2026)
+**Date:** 2026-09-28
+
+### Context
+
+Tasks and questions depend only on the abstract `OperateTheWorkbench` ability (DR-006), so a browser surface must provide the same operations. Rewriting them as surface-specific Serenity/JS web interactions would fork the tasks per surface.
+
+### Decision
+
+`BrowserBackend` implements the workbench operations with Playwright. Commands use role-and-name locators, and reads use `data-value` attributes (DR-007). `BrowseTheWorkbench` wraps it as the ability. Preconditions go through the API. Forced commands go to the API with the browser context's own session cookie (DR-010). UI-only steps use a separate `UseTheScreens` ability. Each member of staff gets a separate browser context with `en-GB` locale and `Europe/London` time.
+
+### Consequences
+
+- The same tasks, questions and step definitions drive core, API and Angular unchanged; the parity gate grep enforces it.
+- Serenity/JS reports show task-level activities for the browser surface, not individual clicks. Moving the backend to `@serenity-js/web` interactions is possible later without changing any step.
+
+### Alternatives Considered
+
+- **Surface-specific Serenity/JS web tasks** — richer reports, but a second set of tasks per UI and step definitions that must choose between them.
+

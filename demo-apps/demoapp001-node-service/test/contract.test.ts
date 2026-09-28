@@ -131,6 +131,11 @@ describe('demoapp001-node-service contract (test mode)', () => {
         assert.equal((await call('GET', '/api/v1/applications/{id}', `/api/v1/applications/${id}`, { as: 'Aled' })).status, 200);
         assert.equal((await call('GET', '/api/v1/applications', '/api/v1/applications?status=AWAITING_APPROVAL', { as: 'Aled' })).body.length, 1);
 
+        const actions = await call('GET', '/api/v1/applications/{id}/actions', `/api/v1/applications/${id}/actions`, { as: 'Olivia' });
+        assert.deepEqual(actions.body.approve, { available: false, reason: 'SELF_APPROVAL' });
+        const staffActions = await call('GET', '/api/v1/me/actions', '/api/v1/me/actions', { as: 'Aled' });
+        assert.deepEqual(staffActions.body.submit, { available: false, reason: 'ROLE_NOT_PERMITTED' });
+
         const self = await call('POST', '/api/v1/applications/{id}/approve', `/api/v1/applications/${id}/approve`, { as: 'Olivia' });
         assert.deepEqual([self.status, self.body.code], [403, 'SELF_APPROVAL']);
 
@@ -174,7 +179,7 @@ describe('demoapp001-node-service contract (test mode)', () => {
         const missing = await call('GET', '/api/v1/applications/{id}', '/api/v1/applications/APP-999999', { as: 'Aled' });
         assert.deepEqual([missing.status, missing.body.code], [404, 'NOT_FOUND']);
 
-        assert.ok(checked >= 16, `expected at least 16 schema-validated bodies, made ${checked}`);
+        assert.ok(checked >= 18, `expected at least 18 schema-validated bodies, made ${checked}`);
     });
 
     it('isolates namespaces', async () => {
