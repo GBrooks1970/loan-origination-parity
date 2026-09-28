@@ -54,7 +54,7 @@ npm run verify
 | Path | What it is |
 | :--- | :--- |
 | [`DOCS/.design/loan-origination-platform-specification.md`](DOCS/.design/loan-origination-platform-specification.md) | The platform specification (v1.5) |
-| [`DOCS/decision-register.md`](DOCS/decision-register.md) | DR-001 – DR-016 Accepted; DR-017 and DR-018 Proposed in Phase 3; DR-009 records resolved versions |
+| [`DOCS/decision-register.md`](DOCS/decision-register.md) | DR-001 – DR-018 Accepted; DR-009 records resolved versions |
 | [`DOCS/.architecture/openapi.yaml`](DOCS/.architecture/openapi.yaml) | OpenAPI 3.1 contract (1.3.0) |
 | [`features-shared/`](features-shared/) | 19 feature files: `domain-rules/` (33), `workflows/` (52), `ui-only/` (21) |
 | [`test-harnesses/harness-serenity/`](test-harnesses/harness-serenity/) | Screenplay harness: `CallDomainCore`, `CallLoanApi` and `BrowseTheWorkbench` implement one abstract `OperateTheWorkbench` ability; `UseTheScreens` adds UI-only interactions |

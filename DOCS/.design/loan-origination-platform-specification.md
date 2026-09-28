@@ -5,7 +5,7 @@
 **Status:** Approved — Phase 0 contract accepted by the owner on 27 September 2026
 **Supersedes (for Alpha only):** PRJ-01 in `project-specs/potential-project-outlines/nodejs-angular-multi-stack-parity-outlines.md` (V1) and `…-tri-stack-parity-outlines-v2.md` (V2)
 **Derived from:** `project-specs/potential-project-outlines/multi-stack-parity-outlines-critique.md` §2.1, §2.4, §5
-**Decisions:** [`../decision-register.md`](../decision-register.md) (DR-001 – DR-016 Accepted; DR-017 and DR-018 Proposed in Phase 3)
+**Decisions:** [`../decision-register.md`](../decision-register.md) (DR-001 – DR-018, all Accepted)
 **API contract:** [`../.architecture/openapi.yaml`](../.architecture/openapi.yaml)
 
 ---

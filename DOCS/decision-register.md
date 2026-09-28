@@ -6,7 +6,7 @@
 
 All thirteen records were accepted by the owner on 27 September 2026 ("accept all"), following the Phase 0 review. DR-001, DR-002, DR-009 and DR-013 record owner directions given on 26 September 2026 (UK regime, in-portfolio location, current framework versions, TypeScript harness only).
 
-DR-014, DR-015 and DR-016 were proposed during Phase 2 and accepted by the owner on 28 September 2026 ("accept all").
+DR-014, DR-015 and DR-016 were proposed during Phase 2 and accepted by the owner on 28 September 2026 ("accept all"). DR-017 and DR-018 were proposed during Phase 3 and accepted by the owner on 28 September 2026 ("accept both").
 
 | DR | Title | Status |
 | :--- | :--- | :--- |
@@ -26,8 +26,8 @@ DR-014, DR-015 and DR-016 were proposed during Phase 2 and accepted by the owner
 | DR-014 | UIs are served same-origin with the API behind a thin proxy | Accepted (2026-09-28) |
 | DR-015 | Action affordances are computed by the server, not re-derived by UIs | Accepted (2026-09-28) |
 | DR-016 | Browser surfaces implement the workbench ability with Playwright directly | Accepted (2026-09-28) |
-| DR-017 | Next.js commands use post/redirect/get, with the outcome in the redirect target | Proposed (Phase 3) |
-| DR-018 | Forced commands on Next.js replay forms captured in a donor namespace | Proposed (Phase 3) |
+| DR-017 | Next.js commands use post/redirect/get, with the outcome in the redirect target | Accepted (2026-09-28) |
+| DR-018 | Forced commands on Next.js replay forms captured in a donor namespace | Accepted (2026-09-28) |
 
 ---
 
@@ -308,7 +308,7 @@ Server Actions are exercised only through a real browser. Refusal scenarios use 
 
 - **API:** a direct HTTP call with the actor's session.
 - **Angular:** a direct Node API call made with the SPA's own session cookie, from the actor's browser context.
-- **Next.js:** the harness opens the target application in a second browser context signed in as a staff member who *is* offered the command, captures that rendered form (action ID and fields) from the DOM at run time, then submits it from the forcing actor's context with the actor's session cookie. Action IDs are discoverable by any user, so this is the realistic threat; they are never read from build output.
+- **Next.js:** the harness opens the target application in a second browser context signed in as a staff member who *is* offered the command, captures that rendered form (action ID and fields) from the DOM at run time, then submits it from the forcing actor's context with the actor's session cookie. Action IDs are discoverable by any user, so this is the realistic threat; they are never read from build output. *As carried out since Phase 3 (DR-018, accepted 28 September 2026): forms are captured once per run in a separate donor namespace rather than on the target application, because some refusal scenarios force commands that nobody is offered on the target.*
 
 `page.route()` may observe action requests but never fulfil them.
 
@@ -477,7 +477,7 @@ Tasks and questions depend only on the abstract `OperateTheWorkbench` ability (D
 
 ## DR-017: Next.js commands use post/redirect/get, with the outcome in the redirect target
 
-**Status:** Proposed (Phase 3, 28 September 2026)
+**Status:** Accepted (owner, 2026-09-28)
 **Date:** 2026-09-28
 
 ### Context
@@ -503,7 +503,7 @@ Every Server Action delegates to the Node API, calls `revalidatePath('/applicati
 
 ## DR-018: Forced commands on Next.js replay forms captured in a donor namespace
 
-**Status:** Proposed (Phase 3, 28 September 2026). Refines how DR-010 is carried out; DR-010's decision is unchanged.
+**Status:** Accepted (owner, 2026-09-28). Refines how DR-010 is carried out; DR-010's decision is unchanged.
 **Date:** 2026-09-28
 
 ### Context
