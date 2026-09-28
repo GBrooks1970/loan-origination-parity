@@ -12,3 +12,4 @@ playwright-report/
 __pycache__/
 .DS_Store
 test-harnesses/*/reports/
+.angular/
