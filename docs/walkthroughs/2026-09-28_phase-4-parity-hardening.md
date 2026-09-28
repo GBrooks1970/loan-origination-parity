@@ -63,7 +63,21 @@ Runs 21, 24 and 25 took longer because their jobs waited up to about 2.5 minutes
 | Measured timings published | Met: README, evidence JSON, and playbook Exhibit 2 (portfolio PR) |
 | Walkthrough archived with SHAs per `AGENTS.md` | This document |
 
-## 4. Notes and limits
+## 4. Finding after the stability proof: an intermittent harness failure
+
+The first CI run of this PR (run `36470234368`, head `ba9764a`, documentation only) failed in `Surface (angular)`. The summary showed 1 broken scenario in 'Application submission'.
+
+- **Reproduced locally:** 1 failure in 30 runs of the eight submission scenarios. The failing scenario was `Amount 5000.00 over 61 months is refused as TERM_OUT_OF_RANGE`. The step itself passed, but the scenario failed on an escaped `Refusal: Refused: TERM_OUT_OF_RANGE`, preceded by `PromiseRejectionHandledWarning: Promise rejection was handled asynchronously`.
+- **Cause:** a race in the test harness, not the application. `BrowserBackend` starts waiting for a command's outcome before the click, but awaits it only after the click has finished. When a refusal arrives first, Node treats the rejection as unhandled. This has been present since Phase 2, on both browser surfaces.
+- **Fix** (`cc98f1d`, PR #9, carried into this PR): the outcome promises are marked as handled when they are created (`handledLater`).
+- **Proof:**
+  - With a 500 ms pause planted between click and await, the scenario fails every time without the fix and passes with it.
+  - After the fix, 60 runs gave 0 failures and 0 rejection warnings.
+  - The full Angular and Next.js suites pass (106/106 each), with PARITY PASS.
+
+**What this means for the exit criterion.** The 10 runs are real and unretried, but they did not prove the suite free of flakes. The harness had a latent race that about 1 run in 30 triggers. The criterion is met as written, and the defect it failed to catch is now fixed.
+
+## 5. Notes and limits
 
 - The ten runs were started together and ran in parallel on separate GitHub-hosted runners. They show repeatability across runner instances, not ten runs in sequence on one machine.
 - The parity gate still uses Node (`.mjs`), not PowerShell. The roadmap suggested PowerShell only for cross-platform support, which Node already provides.

@@ -34,6 +34,7 @@ Medians of the 10 runs (range in brackets). Suite and scenario times come from t
 - **Job durations (median):** static 37 s, core 33 s, API 44 s, Angular 149 s, Next.js 160 s, parity gate 11 s.
 - **Runner time:** 4,328 job-seconds (72 minutes) across the 10 runs; 101 minutes when each job is rounded up to a whole minute.
 - **Set-up target (spec §11: under 200 ms per scenario):** met, with a worst p95 of 8.84 ms in any run.
+- **Intermittent harness failure found afterwards:** the next CI run (PR #8) hit a race in the browser harness that about 1 run in 30 triggers. A refusal that arrives before a click finishes surfaced as an unhandled rejection. It was fixed in PR #9 and the fix is carried into PR #8; see the Phase 4 walkthrough, section 4.
 
 ## Results (28 September 2026: after a clean `npm ci`, `npm run verify` exited 0 in 290 s)
 
