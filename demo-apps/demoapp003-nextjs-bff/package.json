@@ -1,0 +1,25 @@
+{
+  "name": "@lop/demoapp003-nextjs-bff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stack 3: Next.js underwriter workbench as a backend-for-frontend over the Node API (Server Components and Server Actions).",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "typecheck": "next typegen && tsc --noEmit",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@lop/domain-core": "0.1.0",
+    "@types/node": "24.19.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "6.0.3"
+  }
+}
