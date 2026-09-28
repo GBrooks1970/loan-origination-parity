@@ -1,6 +1,6 @@
 # Loan Origination Parity
 
-**Status:** Phase 4 (parity gate and hardening) — in progress; Phases 1–3 complete
+**Status:** Phases 0–4 complete (28 September 2026). The parity gate passed on 10 of 10 CI runs with no retries.
 **Origin:** seeded from `project-specs/loan-origination-parity/` in [`test-automation-portfolio`](https://github.com/GBrooks1970/test-automation-portfolio) at `e4b915d` (DR-001)
 **Why this project:** [`multi-stack-parity-outlines-critique.md`](https://github.com/GBrooks1970/test-automation-portfolio/blob/main/project-specs/potential-project-outlines/multi-stack-parity-outlines-critique.md) §5
 
@@ -16,6 +16,25 @@ The rules are modelled on UK consumer credit obligations and simplified for test
 | Node.js REST API | [`demo-apps/demoapp001-node-service`](demo-apps/demoapp001-node-service) | 1 | Built |
 | Angular SPA (underwriter workbench) | [`demo-apps/demoapp002-angular-spa`](demo-apps/demoapp002-angular-spa) | 2 | Built |
 | Next.js backend-for-frontend | [`demo-apps/demoapp003-nextjs-bff`](demo-apps/demoapp003-nextjs-bff) | 3 | Built |
+
+## Stability and measured timings (Phase 4, 28 September 2026)
+
+Ten CI runs, started by hand on `main` at `126f304`: **10 of 10 green on the first attempt**, and PARITY PASS (counts and step text) in every run. That is 1,060 scenario executions each on Angular and Next.js, 850 on the API and 330 on the core, with no failures and no retries. Raw per-run data: [`docs/evidence/2026-09-28_phase-4-stability-runs.json`](docs/evidence/2026-09-28_phase-4-stability-runs.json).
+
+Medians of the 10 runs (range in brackets). Suite and scenario times come from the Cucumber message timestamps; set-up is the per-scenario test-control cost.
+
+| Surface | Scenarios | Suite | Scenario p50 | Scenario p95 | Set-up p50 | Set-up p95 |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Domain core | 33 | 4.0 s (3.6–4.2) | 110 ms | 162 ms | — | — |
+| API | 85 | 12.0 s (11.5–12.9) | 146 ms | 174 ms | 3.5 ms | 6.5 ms |
+| Angular | 106 | 83.6 s (69.7–89.2) | 688 ms | 1,362 ms | 3.4 ms | 6.3 ms |
+| Next.js | 106 | 88.3 s (73.4–93.7) | 718 ms | 1,448 ms | 3.4 ms | 6.8 ms |
+
+- **CI run duration:** median 219 s (197–336 s) from start to finish. The three longest runs waited up to about 2.5 minutes for a free runner; their test steps took as long as the others'.
+- **Job durations (median):** static 37 s, core 33 s, API 44 s, Angular 149 s, Next.js 160 s, parity gate 11 s.
+- **Runner time:** 4,328 job-seconds (72 minutes) across the 10 runs; 101 minutes when each job is rounded up to a whole minute.
+- **Set-up target (spec §11: under 200 ms per scenario):** met, with a worst p95 of 8.84 ms in any run.
+- **Intermittent harness failure found afterwards:** the next CI run (PR #8) hit a race in the browser harness that about 1 run in 30 triggers. A refusal that arrives before a click finishes surfaced as an unhandled rejection. It was fixed in PR #9 and the fix is carried into PR #8; see the Phase 4 walkthrough, section 4.
 
 ## Results (28 September 2026: after a clean `npm ci`, `npm run verify` exited 0 in 290 s)
 
