@@ -1,10 +1,12 @@
 # Decision Register — Loan Origination Parity
 
-**Last Updated:** 2026-09-27
+**Last Updated:** 2026-09-28
 **Scope:** Phase 0 architectural decisions for the loan origination parity showcase
 **Template:** `templates/decision-record.template.md`
 
 All thirteen records were accepted by the owner on 27 September 2026 ("accept all"), following the Phase 0 review. DR-001, DR-002, DR-009 and DR-013 record owner directions given on 26 September 2026 (UK regime, in-portfolio location, current framework versions, TypeScript harness only).
+
+DR-014, DR-015 and DR-016 were proposed during Phase 2 and accepted by the owner on 28 September 2026 ("accept all").
 
 | DR | Title | Status |
 | :--- | :--- | :--- |
@@ -21,9 +23,9 @@ All thirteen records were accepted by the owner on 27 September 2026 ("accept al
 | DR-011 | Mock only the credit reference agency, inside the Node service | Accepted (2026-09-27) |
 | DR-012 | Fixture identity, not a real identity provider | Accepted (2026-09-27) |
 | DR-013 | TypeScript Serenity/JS harness only | Accepted (2026-09-27) |
-| DR-014 | UIs are served same-origin with the API behind a thin proxy | Proposed (Phase 2) |
-| DR-015 | Action affordances are computed by the server, not re-derived by UIs | Proposed (Phase 2) |
-| DR-016 | Browser surfaces implement the workbench ability with Playwright directly | Proposed (Phase 2) |
+| DR-014 | UIs are served same-origin with the API behind a thin proxy | Accepted (2026-09-28) |
+| DR-015 | Action affordances are computed by the server, not re-derived by UIs | Accepted (2026-09-28) |
+| DR-016 | Browser surfaces implement the workbench ability with Playwright directly | Accepted (2026-09-28) |
 
 ---
 
@@ -396,7 +398,7 @@ One harness: TypeScript, Serenity/JS, Cucumber.js, Playwright. Python and C# har
 
 ## DR-014: UIs are served same-origin with the API behind a thin proxy
 
-**Status:** Proposed (Phase 2, 28 September 2026)
+**Status:** Accepted (owner, 2026-09-28)
 **Date:** 2026-09-28
 
 ### Context
@@ -406,6 +408,8 @@ The Angular SPA calls the Node API from the browser (DR-004). Served on differen
 ### Decision
 
 Each UI's build is served by a small Node server (`demo-apps/demoapp002-angular-spa/server.mjs`) that serves the static files, falls back to `index.html` for SPA routes, and proxies `/api/*` and `/health` to the Node service. It forwards only `content-type`, `cookie` and `x-test-namespace`, and relays `set-cookie`. The browser sees one origin.
+
+The Next.js app needs no separate proxy: its own server renders the pages and calls the Node service server-side (DR-004). Its only browser-facing API route is the test-mode fixture sign-in, `POST /api/v1/session`, which forwards to the Node service and relays `set-cookie` (DR-012). The browser still sees one origin.
 
 ### Consequences
 
@@ -421,7 +425,7 @@ Each UI's build is served by a small Node server (`demo-apps/demoapp002-angular-
 
 ## DR-015: Action affordances are computed by the server, not re-derived by UIs
 
-**Status:** Proposed (Phase 2, 28 September 2026)
+**Status:** Accepted (owner, 2026-09-28)
 **Date:** 2026-09-28
 
 ### Context
@@ -446,7 +450,7 @@ The workbench must offer only the actions a user may take and say why others are
 
 ## DR-016: Browser surfaces implement the workbench ability with Playwright directly
 
-**Status:** Proposed (Phase 2, 28 September 2026)
+**Status:** Accepted (owner, 2026-09-28)
 **Date:** 2026-09-28
 
 ### Context
