@@ -6,7 +6,7 @@ import { ConsoleReporter } from '@serenity-js/console-reporter';
 
 import { ControlTheTestEnvironment } from '../screenplay/abilities/ControlTheTestEnvironment.js';
 import { resetScenario } from '../screenplay/ScenarioState.js';
-import { openSession, surfaceName, type SurfaceSession } from './surfaces.js';
+import { closeSharedBrowser, openSession, surfaceName, type SurfaceSession } from './surfaces.js';
 
 export const STAGE_MANAGER = 'Stage Manager';
 export const VISITOR = 'Visitor';
@@ -31,7 +31,11 @@ Before(async () => {
             if (actor.name === STAGE_MANAGER) {
                 return actor.whoCan(ControlTheTestEnvironment.using(current.control));
             }
-            return actor.whoCan(current.workbenchFor(actor.name === VISITOR ? undefined : actor.name));
+            const username = actor.name === VISITOR ? undefined : actor.name;
+            const screens = current.screensFor?.(username);
+            return screens
+                ? actor.whoCan(current.workbenchFor(username), screens)
+                : actor.whoCan(current.workbenchFor(username));
         }),
     );
 });
@@ -45,7 +49,8 @@ After(async () => {
 });
 
 /** Records the measured per-scenario set-up cost (spec §11: target under 200 ms; nothing is claimed unmeasured). */
-AfterAll(() => {
+AfterAll(async () => {
+    await closeSharedBrowser();
     if (setupTimings.length === 0) return;
     const sorted = [...setupTimings].sort((a, b) => a - b);
     const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.ceil(q * sorted.length) - 1)]!;

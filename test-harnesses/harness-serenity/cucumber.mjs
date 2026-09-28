@@ -19,4 +19,14 @@ export const api = {
     format: [...common.format, 'message:reports/api.ndjson'],
 };
 
+export const angular = {
+    ...common,
+    paths: [
+        '../../features-shared/domain-rules/**/*.feature',
+        '../../features-shared/workflows/**/*.feature',
+        '../../features-shared/ui-only/**/*.feature',
+    ],
+    format: [...common.format, 'message:reports/angular.ndjson'],
+};
+
 export default core;

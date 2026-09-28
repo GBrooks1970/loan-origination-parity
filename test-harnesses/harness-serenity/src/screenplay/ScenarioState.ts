@@ -11,6 +11,8 @@ export class ScenarioState {
     /** The member of staff who asks the Then questions: whoever created the current application. */
     observer: string | undefined;
     lastRefusal: string | undefined;
+    /** On browser surfaces: whoever last looked at a screen asks the ui-only Then questions. */
+    viewer: string | undefined;
 
     nextApplicantRef(): string {
         this.applicantCount += 1;
