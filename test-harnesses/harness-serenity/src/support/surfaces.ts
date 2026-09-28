@@ -20,15 +20,23 @@ export interface SurfaceSession {
     close(): Promise<void>;
 }
 
-export type SurfaceName = 'core' | 'api' | 'angular';
+export type SurfaceName = 'core' | 'api' | 'angular' | 'nextjs';
+
+const SURFACES: readonly SurfaceName[] = ['core', 'api', 'angular', 'nextjs'];
 
 export function surfaceName(): SurfaceName {
     const value = process.env.SURFACE ?? 'core';
-    if (value !== 'core' && value !== 'api' && value !== 'angular') {
-        throw new Error(`Unknown SURFACE "${value}"; expected core, api or angular`);
+    if (!SURFACES.includes(value as SurfaceName)) {
+        throw new Error(`Unknown SURFACE "${value}"; expected ${SURFACES.join(', ')}`);
     }
-    return value;
+    return value as SurfaceName;
 }
+
+/** The browser surfaces: Angular renders in the browser; Next.js renders on its server (DR-004). */
+const BROWSER_SURFACES = {
+    angular: { defaultUrl: 'http://127.0.0.1:4200', rendering: 'client' },
+    nextjs: { defaultUrl: 'http://127.0.0.1:3000', rendering: 'server' },
+} as const;
 
 let browser: Promise<Browser> | undefined;
 
@@ -63,11 +71,13 @@ export async function openSession(surface: SurfaceName): Promise<SurfaceSession>
                 close: async () => undefined,
             };
         }
-        case 'angular': {
+        case 'angular':
+        case 'nextjs': {
             const api = apiBackend();
             const ui = new BrowserBackend(await sharedBrowser(), api, {
-                baseUrl: process.env.LOP_UI_URL ?? 'http://127.0.0.1:4200',
-                surface: 'angular',
+                baseUrl: process.env.LOP_UI_URL ?? BROWSER_SURFACES[surface].defaultUrl,
+                surface,
+                rendering: BROWSER_SURFACES[surface].rendering,
             });
             return {
                 control: api,

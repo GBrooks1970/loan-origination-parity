@@ -1,12 +1,30 @@
 #!/usr/bin/env node
-// Builds domain-core, the Node service and a UI (test configuration), starts the service in test mode
-// and the UI's same-origin server, runs the harness against that UI surface, then stops both.
-// Usage: node tools/run-ui-suite.mjs angular [-- <cucumber arguments>]
+// Builds domain-core, the Node service and a UI, starts the service in test mode and the UI's
+// same-origin server, runs the harness against that UI surface, then stops both.
+// Usage: node tools/run-ui-suite.mjs <angular|nextjs> [-- <cucumber arguments>]
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 
 const surface = process.argv[2] ?? 'angular';
 const UIS = {
-    angular: { workspace: '@lop/demoapp002-angular-spa', build: 'build:test', server: 'demo-apps/demoapp002-angular-spa/server.mjs' },
+    angular: {
+        workspace: '@lop/demoapp002-angular-spa',
+        build: 'build:test',
+        port: '4200',
+        start: (port) => ['node', ['demo-apps/demoapp002-angular-spa/server.mjs'], { PORT: port }],
+        ready: { path: '/', text: '<lop-root' },
+    },
+    // Test mode is a runtime switch for Next.js (fixture sign-in, namespaces), so the build is the production build.
+    nextjs: {
+        workspace: '@lop/demoapp003-nextjs-bff',
+        build: 'build',
+        port: '3000',
+        // Next's own binary, not `npm run start`, so stopping the child stops the server.
+        start: (port) => ['node', [require.resolve('next/dist/bin/next'), 'start', 'demo-apps/demoapp003-nextjs-bff', '-p', port, '-H', '127.0.0.1'], { LOP_TEST_MODE: '1' }],
+        ready: { path: '/sign-in', text: '<h1>Sign in</h1>' },
+    },
 };
 const ui = UIS[surface];
 if (!ui) {
@@ -15,7 +33,7 @@ if (!ui) {
 }
 
 const apiPort = process.env.API_PORT ?? '8000';
-const uiPort = process.env.UI_PORT ?? '4200';
+const uiPort = process.env.UI_PORT ?? ui.port;
 const token = process.env.TEST_CONTROL_TOKEN ?? 'local-test-token';
 const apiUrl = `http://127.0.0.1:${apiPort}`;
 const uiUrl = `http://127.0.0.1:${uiPort}`;
@@ -54,13 +72,16 @@ const children = [
         stdio: 'inherit',
         env: { ...process.env, APP_MODE: 'test', TEST_CONTROL_TOKEN: token, PORT: apiPort },
     }),
-    spawn('node', [ui.server], { stdio: 'inherit', env: { ...process.env, LOP_API_URL: apiUrl, PORT: uiPort } }),
+    (() => {
+        const [command, args, env] = ui.start(uiPort);
+        return spawn(command, args, { stdio: 'inherit', env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1', LOP_API_URL: apiUrl, ...env } });
+    })(),
 ];
 const stop = () => children.forEach((c) => c.kill('SIGTERM'));
 
 try {
     await healthy(`${apiUrl}/health`, async (res) => (await res.json()).testMode === true);
-    await healthy(`${uiUrl}/`, async (res) => (await res.text()).includes('<lop-root'));
+    await healthy(`${uiUrl}${ui.ready.path}`, async (res) => (await res.text()).includes(ui.ready.text));
 } catch (error) {
     console.error(String(error));
     stop();
