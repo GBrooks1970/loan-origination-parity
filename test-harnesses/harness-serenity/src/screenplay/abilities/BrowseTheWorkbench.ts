@@ -62,6 +62,17 @@ const ACTION_BUTTON: Record<'approve' | 'withdraw' | 'human-review', string> = {
 
 const VISITOR = '__visitor__';
 
+/**
+ * An outcome is awaited only after the click or key press that triggers it has finished. A refusal
+ * can arrive before that, and Node would then report the rejection as unhandled, failing the scenario
+ * even though the step handles the refusal. Marking the promise as handled here keeps the rejection
+ * for whoever awaits it.
+ */
+function handledLater<T>(outcome: Promise<T>): Promise<T> {
+    outcome.catch(() => undefined);
+    return outcome;
+}
+
 export class BrowserBackend implements WorkbenchBackend {
     /** Captured once per run and UI: action IDs are fixed for a build, so one capture serves every scenario. */
     private static readonly capturedForms = new Map<string, Promise<Map<FormKey, CapturedForm>>>();
@@ -379,20 +390,22 @@ export class BrowserBackend implements WorkbenchBackend {
      * response. Server rendering: the post/redirect/get target, `?done=` or `?refused=<code>` (DR-017).
      */
     private commandOutcome(page: Page, apiCall: (r: import('playwright').Response) => boolean): Promise<unknown> {
-        if (this.settings.rendering === 'client') return this.outcomeOf(page, apiCall);
-        return page
-            .waitForURL((url) => url.searchParams.has('done') || url.searchParams.has('refused'), { timeout: 15_000 })
-            .then(() => {
-                const url = new URL(page.url());
-                const refused = url.searchParams.get('refused');
-                if (refused) throw new Refusal(refused);
-                return { id: decodeURIComponent(url.pathname.split('/').pop() ?? '') };
-            });
+        if (this.settings.rendering === 'client') return handledLater(this.outcomeOf(page, apiCall));
+        return handledLater(
+            page
+                .waitForURL((url) => url.searchParams.has('done') || url.searchParams.has('refused'), { timeout: 15_000 })
+                .then(() => {
+                    const url = new URL(page.url());
+                    const refused = url.searchParams.get('refused');
+                    if (refused) throw new Refusal(refused);
+                    return { id: decodeURIComponent(url.pathname.split('/').pop() ?? '') };
+                }),
+        );
     }
 
     /** Client rendering loads page data from the browser, so wait for that call; server-rendered HTML arrives with it. */
     private pageData(page: Page, apiCall: (r: import('playwright').Response) => boolean): Promise<unknown> {
-        return this.settings.rendering === 'client' ? this.outcomeOf(page, apiCall) : Promise.resolve();
+        return this.settings.rendering === 'client' ? handledLater(this.outcomeOf(page, apiCall)) : Promise.resolve();
     }
 
     /** Waits for the API response a UI action triggers; a problem+json refusal becomes a Refusal. */
