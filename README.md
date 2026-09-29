@@ -2,7 +2,7 @@
 
 **Status:** Phases 0–4 complete (28 September 2026). The parity gate passed on 10 of 10 CI runs with no retries.
 **Origin:** seeded from `project-specs/loan-origination-parity/` in [`test-automation-portfolio`](https://github.com/GBrooks1970/test-automation-portfolio) at `e4b915d` (DR-001)
-**Test reports:** [Serenity BDD HTML reports for all four surfaces](https://gbrooks1970.github.io/loan-origination-parity/), published from CI on every green build of `main`
+**Test reports:** [parity evidence page](https://gbrooks1970.github.io/loan-origination-parity/) with Serenity BDD HTML reports for all four surfaces, published from CI on every green build of `main`
 **Why this project:** [`multi-stack-parity-outlines-critique.md`](https://github.com/GBrooks1970/test-automation-portfolio/blob/main/project-specs/potential-project-outlines/multi-stack-parity-outlines-critique.md) §5
 
 A UK unsecured personal loan origination workbench. One domain engine is exercised through four surfaces (in-memory core, Node.js REST API, Angular SPA, Next.js backend-for-frontend) by one Serenity/JS Screenplay harness reading one Gherkin store. The showcase proves **surface portability across three web paradigms** and **server-side authorisation that holds when the UI is bypassed**.
@@ -69,7 +69,7 @@ npm run verify
 - `npm run test:nextjs`: builds the Next.js app (production build) and starts it with `LOP_TEST_MODE=1` next to the Node service. Same `--` pass-through: `node tools/run-ui-suite.mjs nextjs -- --name "ratio of"`.
 - `npm run check:parity`: per folder, every targeted surface must pass every scenario, and the passed scenarios must be identical across surfaces (feature file, name, step text and step arguments). It also rejects step definitions that mention a surface.
 - `npm run report:timings`: measured suite, scenario and set-up timings per surface, from the run's own reports.
-- `npm run report:html`: one Serenity BDD HTML report per surface that has run, plus an index page, in `test-harnesses/harness-serenity/target/site/report/`. It needs Java 17 or later; the Serenity BDD CLI jar comes with `npm ci`.
+- `npm run report:html`: one Serenity BDD HTML report per surface that has run, plus the parity evidence page as the index, in `test-harnesses/harness-serenity/target/site/report/`. The page is generated from the run's own reports (`tools/evidence-page/`). Building it also runs the parity gate on a copy of the reports with one planted step-text change, and stops if the gate does not fail. It needs Java 17 or later; the Serenity BDD CLI jar comes with `npm ci`.
 
 ## CI
 
