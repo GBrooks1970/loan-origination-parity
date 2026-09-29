@@ -13,6 +13,7 @@ The project has no tagged releases, so every change so far sits under [Unrelease
 
 ### Added
 
+- Added Serenity BDD HTML reports: the harness now writes Serenity/JS JSON per surface, `npm run report:html` (`tools/build-reports.mjs`) builds one report per surface plus an index page, and CI publishes them to GitHub Pages from `main` when the parity gate and report build both pass.
 - Added `docs/backlog.md` (version 1) and this changelog as part of portfolio onboarding.
 - Added the Phase 4 stability evidence: raw data for 10 manually dispatched CI runs, all green on the first attempt, in `docs/evidence/2026-09-28_phase-4-stability-runs.json`. Also added the median timings to the README and the Phase 4 walkthrough (#8).
 - Added step-text parity to the parity gate. It now compares feature file, scenario name, step text and step arguments per folder, not only counts (#7).
