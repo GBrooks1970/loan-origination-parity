@@ -88,6 +88,14 @@ jobs:
           path: test-harnesses/harness-serenity/reports/
           if-no-files-found: error
 
+      - name: Upload Serenity/JS JSON for the HTML report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: serenity-${{ matrix.surface }}
+          path: test-harnesses/harness-serenity/target/site/serenity/
+          if-no-files-found: error
+
   parity:
     # Fan-in: the gate compares all four surfaces' reports, so it runs once they have all finished.
     name: Parity gate and measured timings
@@ -125,3 +133,74 @@ jobs:
           name: timings-summary
           path: test-harnesses/harness-serenity/reports/timings-summary.json
           if-no-files-found: ignore
+
+  report:
+    # Serenity BDD HTML report per surface plus an index page (tools/build-reports.mjs). Built on
+    # every run so a pull request proves it still builds; published only from main (deploy job).
+    name: Serenity BDD HTML reports
+    needs: [surface]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install
+        run: npm ci
+
+      - name: Collect every surface's Serenity/JS JSON
+        uses: actions/download-artifact@v7
+        with:
+          pattern: serenity-*
+          merge-multiple: true
+          path: test-harnesses/harness-serenity/target/site/serenity/
+
+      - name: Collect every surface's Cucumber messages
+        uses: actions/download-artifact@v7
+        with:
+          pattern: reports-*
+          merge-multiple: true
+          path: test-harnesses/harness-serenity/reports/
+
+      - name: Build the HTML reports
+        run: npm run report:html
+
+      - name: Upload the site for GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: test-harnesses/harness-serenity/target/site/report/
+
+  deploy:
+    # Publishes only a run whose parity gate and report both passed, so the public page never shows
+    # a red build as the project's evidence.
+    name: Publish reports to GitHub Pages
+    needs: [parity, report]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.parity.result == 'success' && needs.report.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

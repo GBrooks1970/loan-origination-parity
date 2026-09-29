@@ -1,6 +1,6 @@
 # Loan Origination Parity — Backlog
 
-**Version:** 2 — Risk #1 (Node 20 CI actions) resolved; no outstanding risks
+**Version:** 3 — Serenity BDD HTML report delivered; no outstanding risks
 **Last Updated:** 2026-09-29
 **Based on:** [Phase 4 walkthrough](walkthroughs/2026-09-28_phase-4-parity-hardening.md) and the CI warnings on every run since Phase 1; version 2 records the resolution of Risk #1
 
@@ -72,9 +72,14 @@ These items have not been requested. They are candidates, not commitments.
 
 1. **Non-gating Web Vitals job** — effort not estimated, not requested. Measure the Angular and Next.js pages in CI without gating on the result.
 2. **`@serenity-js/rest` for the API ability** — effort not estimated, not requested. Replace the hand-written `CallLoanApi` HTTP calls.
-3. **Serenity BDD HTML report** — effort not estimated, not requested. Would give the project a publishable evidence artefact.
-4. **`@serenity-js/web` for browser reports** — effort not estimated, not requested. Revisits the trade-off recorded in DR-016.
-5. **MSW component-state tier** — effort not estimated, not requested. The optional tier described in DR-011.
+3. **`@serenity-js/web` for browser reports** — effort not estimated, not requested. Revisits the trade-off recorded in DR-016.
+4. **MSW component-state tier** — effort not estimated, not requested. The optional tier described in DR-011.
+
+---
+
+## Delivered from Potential Next Steps
+
+- **Serenity BDD HTML report** — delivered 2026-09-29 at the owner's request. CI builds one report per surface plus an index page (`npm run report:html`) and publishes them to GitHub Pages from `main`, to give the portfolio landing page a live evidence link.
 
 ---
 

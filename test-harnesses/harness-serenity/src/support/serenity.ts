@@ -15,7 +15,12 @@ setDefaultTimeout(30_000);
 
 BeforeAll(() => {
     configure({
-        crew: [ConsoleReporter.fromJSON({ theme: 'auto' })],
+        crew: [
+            ConsoleReporter.fromJSON({ theme: 'auto' }),
+            // Serenity BDD JSON per surface; tools/build-reports.mjs turns each folder into an HTML report.
+            '@serenity-js/serenity-bdd',
+            ['@serenity-js/core:ArtifactArchiver', { outputDirectory: `target/site/serenity/${surfaceName()}` }],
+        ],
     });
 });
 
