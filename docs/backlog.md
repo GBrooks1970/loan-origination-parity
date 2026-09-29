@@ -1,8 +1,8 @@
 # Loan Origination Parity — Backlog
 
-**Version:** 3 — Serenity BDD HTML report delivered; no outstanding risks
+**Version:** 4 — Risk #2 (Ubuntu 26 runner migration) recorded; one outstanding risk
 **Last Updated:** 2026-09-29
-**Based on:** [Phase 4 walkthrough](walkthroughs/2026-09-28_phase-4-parity-hardening.md) and the CI warnings on every run since Phase 1; version 2 records the resolution of Risk #1
+**Based on:** [Phase 4 walkthrough](walkthroughs/2026-09-28_phase-4-parity-hardening.md) and the CI warnings on every run since Phase 1; version 2 records the resolution of Risk #1; version 4 adds Risk #2 from the runner notice on every CI job
 
 This backlog tracks the open risks and candidate work left after all four roadmap phases, ordered by priority score (highest first). Only evidence-backed items are listed.
 
@@ -34,7 +34,33 @@ None.
 
 ### LOW Priority (Score: 0–9)
 
-None.
+#### Risk #2: CI runners move to Ubuntu 26 from 19 October 2026 — Score: 8
+
+**Priority Score:** Security Impact (1) + Breakage Probability (5) + Maintenance Burden (2) = **8 points**
+**Impact:** Every CI job will change operating system without a commit in this repository, which could turn `main` red for reasons outside the code.
+**Effort:** 1–2 hours
+**Status:** READY TO START
+**Affected Stacks:** CI (`.github/workflows/ci.yml`; all five jobs use `runs-on: ubuntu-latest`)
+
+**Problem:**
+Since 29 September 2026 every CI job has carried this notice: 'The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026' (actions/runner-images#14748). The notice was read from the check-run annotations; the linked issue itself could not be read from the build environment. The steps most exposed to an operating-system change are:
+- `npx playwright install --with-deps chromium` (Angular and Next.js jobs), which installs Chromium's system libraries with `apt`;
+- `actions/setup-python@v6` with Python 3.12 (static job), which relies on the runner's tool cache;
+- `actions/setup-java@v5` with Temurin 21 (report job).
+
+**Impact Analysis:**
+- **Security (1/10):** no vulnerability; staying on an older image is supported for now.
+- **Breakage (5/10):** browser system libraries and tool-cache versions are the usual casualties of an image change. Nothing has been measured against Ubuntu 26 yet.
+- **Maintenance (2/10):** five `runs-on` lines, one workflow file.
+
+**Refactor Strategy:**
+1. Before 19 October, run the workflow once with `runs-on: ubuntu-26.04` (by hand, on a branch) and compare it with the current `ubuntu-latest` run. The label must exist on GitHub-hosted runners by then.
+2. If it is green, keep `ubuntu-latest` and close this risk with the evidence.
+3. If it is red, pin `runs-on: ubuntu-24.04` until the failure is fixed, and record the pin in `ci.yml`.
+
+**Success Criteria:**
+- [ ] One full CI run on Ubuntu 26 (all jobs green, PARITY PASS, reports built), or an explicit `ubuntu-24.04` pin with the reason recorded.
+- [ ] The runner notice no longer appears as an unknown on the project's CI.
 
 ---
 
@@ -58,8 +84,8 @@ None.
 |---|---|---|---|
 | HIGH (20–30) | 0 | 0 hrs | — |
 | MEDIUM (10–19) | 0 | 0 hrs | — |
-| LOW (0–9) | 0 | 0 hrs | — |
-| **Total Outstanding** | **0** | **0 hrs** | |
+| LOW (0–9) | 1 | 1–2 hrs | 1 READY TO START |
+| **Total Outstanding** | **1** | **1–2 hrs** | |
 | Resolved | 2 | 1 hr (Risk #1) | |
 
 ---
