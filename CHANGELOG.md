@@ -33,6 +33,10 @@ The project has no tagged releases, so every change so far sits under [Unrelease
 - Changed the application expiry rule so that a human review restarts the 30-day window: applications carry `reopenedAt`, and expiry runs from it when set (spec v1.3, OpenAPI 1.2.0) (#2).
 - Changed the status of decisions DR-014 to DR-016 (#5) and DR-017 to DR-018 (#6) from Proposed to Accepted.
 
+### Removed
+
+- Removed `.github/workflows/nextjs.yml`, GitHub's Next.js Pages starter workflow added in `7d68d4c`. It ran `next build` at the repository root, where there is no Next.js app, and failed on every push to `main`. It also targeted the same Pages site as the Serenity BDD reports, which `ci.yml` publishes.
+
 ### Fixed
 
 - Fixed an intermittent harness race on the browser surfaces. A refusal that arrived before the triggering click finished was reported as an unhandled rejection and failed the scenario in about 1 run in 30 (#9).
