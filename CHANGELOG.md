@@ -28,6 +28,7 @@ The project has no tagged releases, so every change so far sits under [Unrelease
 
 ### Changed
 
+- Changed the CI workflow's GitHub Actions from Node 20 majors to their first Node 24 majors (`checkout@v5`, `setup-node@v5`, `setup-python@v6`, `upload-artifact@v6`, `download-artifact@v7`), which removes the Node 20 deprecation warning; closes backlog Risk #1.
 - Changed the application expiry rule so that a human review restarts the 30-day window: applications carry `reopenedAt`, and expiry runs from it when set (spec v1.3, OpenAPI 1.2.0) (#2).
 - Changed the status of decisions DR-014 to DR-016 (#5) and DR-017 to DR-018 (#6) from Proposed to Accepted.
 
