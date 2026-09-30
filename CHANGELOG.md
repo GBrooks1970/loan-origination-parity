@@ -13,6 +13,7 @@ The project has no tagged releases, so every change so far sits under [Unrelease
 
 ### Added
 
+- Added the parity evidence page as the index of the published site: a parity matrix of every scenario on every surface, the same step traced through all four abilities (code read from the harness source), the forced-command authorisation scenarios, this run's timings beside the Phase 4 medians, and a negative check that plants a step-text change in a copy of the reports and requires the real parity gate to fail. It is built by `npm run report:html` from the run's own artefacts (`tools/evidence-page/`).
 - Added Serenity BDD HTML reports: the harness now writes Serenity/JS JSON per surface, `npm run report:html` (`tools/build-reports.mjs`) builds one report per surface plus an index page, and CI publishes them to GitHub Pages from `main` when the parity gate and report build both pass.
 - Added `docs/backlog.md` (version 1) and this changelog as part of portfolio onboarding.
 - Added the Phase 4 stability evidence: raw data for 10 manually dispatched CI runs, all green on the first attempt, in `docs/evidence/2026-09-28_phase-4-stability-runs.json`. Also added the median timings to the README and the Phase 4 walkthrough (#8).
@@ -36,12 +37,10 @@ The project has no tagged releases, so every change so far sits under [Unrelease
 ### Removed
 
 - Removed `.github/workflows/nextjs.yml`, GitHub's Next.js Pages starter workflow added in `7d68d4c`. It ran `next build` at the repository root, where there is no Next.js app, and failed on every push to `main`. It also targeted the same Pages site as the Serenity BDD reports, which `ci.yml` publishes.
+- Removed the Angular compiler cache from version control (#4).
 
 ### Fixed
 
+- Fixed the changelog having two Removed sections; they are now one.
 - Fixed an intermittent harness race on the browser surfaces. A refusal that arrived before the triggering click finished was reported as an unhandled rejection and failed the scenario in about 1 run in 30 (#9).
 - Fixed CI on a clean checkout by building `@lop/domain-core` before typecheck and tests (#1).
-
-### Removed
-
-- Removed the Angular compiler cache from version control (#4).

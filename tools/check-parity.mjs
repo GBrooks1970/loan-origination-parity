@@ -7,7 +7,8 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
-const reports = join(root, 'test-harnesses/harness-serenity/reports');
+// PARITY_REPORTS_DIR lets tools/build-reports.mjs run this gate on a tampered copy (its negative check).
+const reports = process.env.PARITY_REPORTS_DIR ?? join(root, 'test-harnesses/harness-serenity/reports');
 
 /** Which surfaces target which folder (spec §10.1). */
 const REACH = {
