@@ -19,7 +19,7 @@ concurrency:
 jobs:
   static:
     name: Static (typecheck, unit, contract, oracle)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
@@ -52,7 +52,7 @@ jobs:
   surface:
     # Each surface builds what it needs and runs in parallel with the others (DR-006 reach per folder).
     name: Surface (${{ matrix.surface }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -101,7 +101,7 @@ jobs:
     name: Parity gate and measured timings
     needs: [static, surface]
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
@@ -140,7 +140,7 @@ jobs:
     name: Serenity BDD HTML reports
     needs: [surface]
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
@@ -189,7 +189,7 @@ jobs:
     name: Publish reports to GitHub Pages
     needs: [parity, report]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.parity.result == 'success' && needs.report.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       pages: write
