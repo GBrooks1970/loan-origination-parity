@@ -1,6 +1,6 @@
 # Loan Origination Parity — Backlog
 
-**Version:** 6 — Risk #3 (parity gate does not run on Windows) added; Risk #2 (Ubuntu 26 runner migration) resolved by a green trial run
+**Version:** 7 — Risk #3 extended to cover `build-reports.mjs` and `report-timings.mjs` (Windows); version 6 added Risk #3; Risk #2 (Ubuntu 26 runner migration) resolved by a green trial run
 **Last Updated:** 2026-10-07
 **Based on:** [Phase 4 walkthrough](walkthroughs/2026-09-28_phase-4-parity-hardening.md) and the CI warnings on every run since Phase 1; version 2 records the resolution of Risk #1; version 4 adds Risk #2 from the runner notice on every CI job; version 5 records its resolution
 
@@ -34,18 +34,24 @@ None.
 
 ### LOW Priority (Score: 0–9)
 
-#### Risk #3: the parity gate does not run on Windows — Score 5 (Security 0 + Breakage 3 + Maintenance 2) — READY TO START
+#### Risk #3: the parity gate and report scripts do not run on Windows — Score 5 (Security 0 + Breakage 3 + Maintenance 2) — READY TO START
 
-**Evidence:** On 6 October 2026, on Windows with Node 24.18.0, `npm run check:parity` exited 1 in 4 s after all four suites had passed (33, 85, 106 and 106 scenarios). It fails in two places in `tools/check-parity.mjs`:
+**Evidence (tested, 6 October 2026, Windows, Node 24.18.0):** `npm run check:parity` exited 1 in 4 s after all four suites had passed (33, 85, 106 and 106 scenarios). It fails in two places in `tools/check-parity.mjs`:
 1. Line 9, `const root = new URL('..', import.meta.url).pathname;`, gives `/D:/…` on Windows, which is then joined into a doubled drive path: `ENOENT: no such file or directory, scandir 'D:\D:\…\features-shared\domain-rules'`. `fileURLToPath` gives the right path.
 2. Line 55, `pickles.get(pickleId).split('features-shared/')[1]`, assumes forward slashes. On Windows the reports record `"uri":"..\\..\\features-shared\\domain-rules\\age-eligibility.feature"` (JSON-escaped backslashes), so the split returns `undefined` and the script throws `Cannot read properties of undefined (reading 'split')`.
 
-**Impact:** CI runs on Linux and is unaffected. A contributor on Windows cannot run the gate natively. With the `uri` separators normalised in a scratch copy of the reports and the unmodified script run in a `node:24` container, it reported `PARITY PASS` (33/33, 52/52, 21/21), so the reports are sound and only the script is at fault. `tools/build-reports.mjs`, which runs the gate on a tampered copy, may share the path assumption and should be checked.
-**Suggested fix:** use `fileURLToPath` for `root`, and normalise `uri` separators (`uri.replaceAll('\\', '/')`) before the `features-shared/` split. Add a unit test that feeds the gate a backslash URI.
-**Effort:** about 1 hr (estimate, not measured).
-**Status:** READY TO START — not requested.
-**See:** `docs/walkthroughs/2026-10-07_learning-paths-stage-2-5.md` in the portfolio repository (PR GBrooks1970/test-automation-portfolio#280), and finding 8 in `portfolio-docs/PORTFOLIO_LEARNING_PATHS.md`.
+**Evidence (tested, 7 October 2026, Windows, Node 24.18.0):** `spawnSync('npx', …)` without a shell fails on Windows (`ENOENT`; `spawnSync('npm.cmd', …)` gives `EINVAL`; `shell: true` works). `tools/build-reports.mjs:50` uses exactly that pattern for `npx serenity-bdd run`, so `npm run report:html` cannot reach its Serenity step on Windows. The call pattern is proven; `report:html` itself was not run (it also needs Java 17 or later).
 
+**Same assumptions, found by reading only (not run):**
+- `tools/build-reports.mjs:17` and `tools/report-timings.mjs:9` use the same `new URL(…).pathname` root.
+- `tools/check-parity.mjs:70` and `tools/build-reports.mjs:147-148` split `uri` on `features-shared/`.
+- `tools/build-reports.mjs:202`, `pickle.uri.includes('features-shared/domain-rules/')`, would be **silently false** on backslash URIs, so domain-rules rows could be skipped without an error. This is the most important one to confirm, because it fails quietly.
+
+**Impact:** CI runs on Linux and is unaffected. A contributor on Windows cannot run the gate or build the report natively. With the `uri` separators normalised in a scratch copy of the reports and the unmodified `check-parity.mjs` run in a `node:24` container, it reported `PARITY PASS` (33/33, 52/52, 21/21), so the reports are sound and the scripts are at fault.
+**Suggested fix:** use `fileURLToPath` for every `root`, and normalise `uri` separators once, through a shared helper, before any `features-shared/` split or `includes`. Run `serenity-bdd` with `shell: true` (or through `process.execPath` and the CLI entry). Add unit tests that feed both scripts a backslash URI, including one asserting that domain-rules rows are not dropped. Optionally add a `windows-latest` CI job that runs `check:parity` and `report:html`; that is a CI change and is not required for the fix.
+**Effort:** about 2 hrs (estimate, not measured; up from 1 hr).
+**Status:** READY TO START — not requested.
+**See:** `docs/walkthroughs/2026-10-07_learning-paths-stage-2-5.md` in the portfolio repository (PR GBrooks1970/test-automation-portfolio#280), finding 8 in `portfolio-docs/PORTFOLIO_LEARNING_PATHS.md`, and the 7 October 2026 sweep of `child_process` calls across the portfolio.
 ---
 
 ### Resolved Risks
@@ -73,8 +79,8 @@ None.
 |---|---|---|---|
 | HIGH (20–30) | 0 | 0 hrs | — |
 | MEDIUM (10–19) | 0 | 0 hrs | — |
-| LOW (0–9) | 1 | 1 hr | READY TO START |
-| **Total Outstanding** | **1** | **1 hr** | |
+| LOW (0–9) | 1 | 2 hrs | READY TO START |
+| **Total Outstanding** | **1** | **2 hrs** | |
 | Resolved | 3 | 2 hrs (Risks #1 and #2) | |
 
 ---
