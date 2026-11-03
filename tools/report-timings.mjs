@@ -5,8 +5,9 @@
 // Nothing here is estimated: every figure comes from timestamps the run itself recorded.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const reports = new URL('../test-harnesses/harness-serenity/reports/', import.meta.url).pathname;
+const reports = fileURLToPath(new URL('../test-harnesses/harness-serenity/reports/', import.meta.url));
 const SURFACES = ['core', 'api', 'angular', 'nextjs'];
 
 const millis = (t) => t.seconds * 1000 + t.nanos / 1e6;

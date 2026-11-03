@@ -1,8 +1,8 @@
 # Loan Origination Parity — Backlog
 
-**Version:** 7 — Risk #3 extended to cover `build-reports.mjs` and `report-timings.mjs` (Windows); version 6 added Risk #3; Risk #2 (Ubuntu 26 runner migration) resolved by a green trial run
-**Last Updated:** 2026-10-07
-**Based on:** [Phase 4 walkthrough](walkthroughs/2026-09-28_phase-4-parity-hardening.md) and the CI warnings on every run since Phase 1; version 2 records the resolution of Risk #1; version 4 adds Risk #2 from the runner notice on every CI job; version 5 records its resolution
+**Version:** 8 — Risk #3 (Windows parity and report tooling) resolved with shared `tools/report-paths.mjs`, `fileURLToPath`, shell-free Serenity BDD CLI resolution, and 11 unit/integration tests (`npm run test:tools`); version 7 extended Risk #3 to cover `build-reports.mjs` and `report-timings.mjs`; version 6 added Risk #3; Risk #2 (Ubuntu 26 runner migration) resolved by a green trial run
+**Last Updated:** 2026-11-03
+**Based on:** [Phase 4 walkthrough](walkthroughs/2026-09-28_phase-4-parity-hardening.md) and the CI warnings on every run since Phase 1; version 2 records the resolution of Risk #1; version 4 adds Risk #2 from the runner notice on every CI job; version 5 records its resolution; version 8 records the resolution of Risk #3 ([Windows report tooling walkthrough](walkthroughs/2026-11-03_risk-3-windows-report-tooling.md))
 
 This backlog tracks the open risks and candidate work left after all four roadmap phases, ordered by priority score (highest first). Only evidence-backed items are listed.
 
@@ -34,27 +34,16 @@ None.
 
 ### LOW Priority (Score: 0–9)
 
-#### Risk #3: the parity gate and report scripts do not run on Windows — Score 5 (Security 0 + Breakage 3 + Maintenance 2) — READY TO START
+None.
 
-**Evidence (tested, 6 October 2026, Windows, Node 24.18.0):** `npm run check:parity` exited 1 in 4 s after all four suites had passed (33, 85, 106 and 106 scenarios). It fails in two places in `tools/check-parity.mjs`:
-1. Line 9, `const root = new URL('..', import.meta.url).pathname;`, gives `/D:/…` on Windows, which is then joined into a doubled drive path: `ENOENT: no such file or directory, scandir 'D:\D:\…\features-shared\domain-rules'`. `fileURLToPath` gives the right path.
-2. Line 55, `pickles.get(pickleId).split('features-shared/')[1]`, assumes forward slashes. On Windows the reports record `"uri":"..\\..\\features-shared\\domain-rules\\age-eligibility.feature"` (JSON-escaped backslashes), so the split returns `undefined` and the script throws `Cannot read properties of undefined (reading 'split')`.
-
-**Evidence (tested, 7 October 2026, Windows, Node 24.18.0):** `spawnSync('npx', …)` without a shell fails on Windows (`ENOENT`; `spawnSync('npm.cmd', …)` gives `EINVAL`; `shell: true` works). `tools/build-reports.mjs:50` uses exactly that pattern for `npx serenity-bdd run`, so `npm run report:html` cannot reach its Serenity step on Windows. The call pattern is proven; `report:html` itself was not run (it also needs Java 17 or later).
-
-**Same assumptions, found by reading only (not run):**
-- `tools/build-reports.mjs:17` and `tools/report-timings.mjs:9` use the same `new URL(…).pathname` root.
-- `tools/check-parity.mjs:70` and `tools/build-reports.mjs:147-148` split `uri` on `features-shared/`.
-- `tools/build-reports.mjs:202`, `pickle.uri.includes('features-shared/domain-rules/')`, would be **silently false** on backslash URIs, so domain-rules rows could be skipped without an error. This is the most important one to confirm, because it fails quietly.
-
-**Impact:** CI runs on Linux and is unaffected. A contributor on Windows cannot run the gate or build the report natively. With the `uri` separators normalised in a scratch copy of the reports and the unmodified `check-parity.mjs` run in a `node:24` container, it reported `PARITY PASS` (33/33, 52/52, 21/21), so the reports are sound and the scripts are at fault.
-**Suggested fix:** use `fileURLToPath` for every `root`, and normalise `uri` separators once, through a shared helper, before any `features-shared/` split or `includes`. Run `serenity-bdd` with `shell: true` (or through `process.execPath` and the CLI entry). Add unit tests that feed both scripts a backslash URI, including one asserting that domain-rules rows are not dropped. Optionally add a `windows-latest` CI job that runs `check:parity` and `report:html`; that is a CI change and is not required for the fix.
-**Effort:** about 2 hrs (estimate, not measured; up from 1 hr).
-**Status:** READY TO START — not requested.
-**See:** `docs/walkthroughs/2026-10-07_learning-paths-stage-2-5.md` in the portfolio repository (PR GBrooks1970/test-automation-portfolio#280), finding 8 in `portfolio-docs/PORTFOLIO_LEARNING_PATHS.md`, and the 7 October 2026 sweep of `child_process` calls across the portfolio.
 ---
 
 ### Resolved Risks
+
+#### Risk #3: the parity gate and report scripts do not run on Windows ✅ Resolved 2026-11-03
+
+**Resolution:** Added [`tools/report-paths.mjs`](../tools/report-paths.mjs) to centralise Cucumber `pickle.uri` normalisation (`featureRelativePath`, `featureFolderAndFile`, `isFeatureInFolder`), negative-check `domain-rules` tamper selection (`tamperFirstFolderPickleInNdjson`), safe directory deletion checks (`assertSafeSubpath`), and shell-free `@serenity-js/serenity-bdd` CLI resolution (`resolveSerenityBddCliPath`). Updated [`tools/check-parity.mjs`](../tools/check-parity.mjs), [`tools/build-reports.mjs`](../tools/build-reports.mjs), and [`tools/report-timings.mjs`](../tools/report-timings.mjs) to convert script URLs via `fileURLToPath`, use the shared URI helper for scenario grouping, identity, and negative-check tampering, and invoke `bin/serenity-bdd` via `process.execPath` with an argument array instead of `npx`. Added 11 unit and integration tests in [`tools/tests/report-tooling.test.mjs`](../tools/tests/report-tooling.test.mjs) (`npm run test:tools`, wired into `npm run test:unit`). Verified on Windows (Node 24.18.0, Temurin 25.0.4.1) across fresh four-surface runs (`core` 33/33 in 7.4 s, `api` 85/85 in 26.1 s, `angular` 106/106 in 143.4 s, `nextjs` 106/106 in 171.1 s), `npm run check:parity` (`PARITY PASS`: 33/33, 52/52, 21/21), `npm run report:timings`, and `npm run report:html` (all 4 Serenity BDD HTML reports + `index.html` generated, with the negative check catching the planted `domain-rules` change with exit 1), and on Linux CI. Actual effort was about 1 hour, against the 2-hour estimate.
+**See:** [`DOCS/implementation-plans/2026-11-03_risk-3-windows-report-tooling.md`](../DOCS/implementation-plans/2026-11-03_risk-3-windows-report-tooling.md), [`DOCS/implementation-logs/2026-11-03_risk-3-windows-report-tooling.md`](../DOCS/implementation-logs/2026-11-03_risk-3-windows-report-tooling.md), and [`docs/walkthroughs/2026-11-03_risk-3-windows-report-tooling.md`](walkthroughs/2026-11-03_risk-3-windows-report-tooling.md).
 
 #### Risk #2: CI runners move to Ubuntu 26 from 19 October 2026 ✅ Resolved 2026-09-30
 
@@ -79,9 +68,9 @@ None.
 |---|---|---|---|
 | HIGH (20–30) | 0 | 0 hrs | — |
 | MEDIUM (10–19) | 0 | 0 hrs | — |
-| LOW (0–9) | 1 | 2 hrs | READY TO START |
-| **Total Outstanding** | **1** | **2 hrs** | |
-| Resolved | 3 | 2 hrs (Risks #1 and #2) | |
+| LOW (0–9) | 0 | 0 hrs | — |
+| **Total Outstanding** | **0** | **0 hrs** | |
+| Resolved | 4 | 3 hrs (Risks #1, #2 and #3) | |
 
 ---
 

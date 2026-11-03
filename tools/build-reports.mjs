@@ -13,8 +13,10 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertSafeSubpath, featureFolderAndFile, resolveSerenityBddCliPath, tamperFirstFolderPickleInNdjson, withKeywords } from './report-paths.mjs';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const harness = join(root, 'test-harnesses/harness-serenity');
 const json = join(harness, 'target/site/serenity');
 const reports = join(harness, 'reports');
@@ -27,7 +29,6 @@ const SURFACES = [
     { id: 'angular', label: 'Angular' },
     { id: 'nextjs', label: 'Next.js' },
 ];
-const KEYWORD = { Context: 'Given', Action: 'When', Outcome: 'Then' };
 const RANK = { PASSED: 0, SKIPPED: 1, PENDING: 2, UNDEFINED: 3, AMBIGUOUS: 4, FAILED: 5, UNKNOWN: 6 };
 
 function fail(message) {
@@ -37,9 +38,11 @@ function fail(message) {
 
 // --- Serenity BDD reports ----------------------------------------------------------------------
 
+assertSafeSubpath(join(harness, 'target/site'), site);
 rmSync(site, { recursive: true, force: true });
 mkdirSync(site, { recursive: true });
 
+const serenityBddCliPath = resolveSerenityBddCliPath(import.meta.url);
 const built = {};
 for (const surface of SURFACES) {
     const source = join(json, surface.id);
@@ -48,9 +51,9 @@ for (const surface of SURFACES) {
         continue;
     }
     const result = spawnSync(
-        'npx',
+        process.execPath,
         [
-            'serenity-bdd', 'run',
+            serenityBddCliPath, 'run',
             '--cacheDir', cacheDir,
             '--source', source,
             '--destination', join(site, surface.id),
@@ -59,7 +62,8 @@ for (const surface of SURFACES) {
         ],
         { cwd: root, stdio: 'inherit' },
     );
-    if (result.status !== 0 || !existsSync(join(site, surface.id, 'index.html'))) fail(`Serenity BDD CLI failed for ${surface.id}`);
+    if (result.error) fail(`Serenity BDD CLI failed to launch for ${surface.id}: ${result.error.message}`);
+    if (result.status !== 0 || !existsSync(join(site, surface.id, 'index.html'))) fail(`Serenity BDD CLI failed for ${surface.id} (exit ${result.status ?? 'unknown'})`);
     built[surface.id] = true;
 }
 if (Object.keys(built).length === 0) fail('no surface had Serenity/JS JSON; run a surface suite first');
@@ -107,17 +111,6 @@ function readSurface(surface) {
 
 const stepText = (step) => `${step.text}${step.argument ? ` ${JSON.stringify(step.argument)}` : ''}`;
 
-/** Given/When/Then from the pickle step types, with "And" for repeats. */
-function withKeywords(steps) {
-    let previous;
-    return steps.map((step) => {
-        const keyword = KEYWORD[step.type] ?? '*';
-        const shown = keyword === previous ? 'And' : keyword;
-        previous = keyword;
-        return `${shown} ${step.text}`;
-    });
-}
-
 /** Names to roles from a scenario's "the following staff members:" table. */
 function staffRoles(pickle) {
     const table = pickle.steps.find((s) => s.text === 'the following staff members:')?.argument?.dataTable;
@@ -144,9 +137,7 @@ for (const surface of SURFACES) {
     if (!data) continue;
     runTimings[surface.id] = data.timings;
     for (const { pickle, status } of data.results) {
-        const path = pickle.uri.split('features-shared/')[1];
-        const [folder, file] = path.split('/');
-        const feature = file.replace('.feature', '');
+        const { path, folder, feature } = featureFolderAndFile(pickle.uri);
         const key = [path, pickle.name, ...pickle.steps.map(stepText)].join('\n');
         const row = rowsByKey.get(key) ?? { folder, feature, name: pickle.name, steps: withKeywords(pickle.steps), res: {} };
         row.res[surface.id] = status;
@@ -194,21 +185,13 @@ if (SURFACES.every((s) => existsSync(join(reports, `${s.id}.ndjson`)))) {
     const copy = mkdtempSync(join(tmpdir(), 'parity-negative-'));
     for (const s of SURFACES) copyFileSync(join(reports, `${s.id}.ndjson`), join(copy, `${s.id}.ndjson`));
     // Plant a change in one step of the first domain-rules scenario in the target surface's report.
-    const lines = readFileSync(join(copy, `${target.id}.ndjson`), 'utf8').split('\n');
-    let planted;
-    for (let i = 0; i < lines.length && !planted; i++) {
-        if (!lines[i].startsWith('{"pickle"')) continue;
-        const m = JSON.parse(lines[i]);
-        if (!m.pickle.uri.includes('features-shared/domain-rules/')) continue;
-        const shown = withKeywords(m.pickle.steps);
-        const index = m.pickle.steps.length - 1;
-        const before = shown[index];
-        m.pickle.steps[index].text = `${m.pickle.steps[index].text} (tampered)`;
-        planted = { scenario: m.pickle.name, before, after: `${before} (tampered)` };
-        lines[i] = JSON.stringify(m);
-    }
-    writeFileSync(join(copy, `${target.id}.ndjson`), lines.join('\n'));
+    const { content: tamperedContent, planted } = tamperFirstFolderPickleInNdjson(
+        readFileSync(join(copy, `${target.id}.ndjson`), 'utf8'),
+        'domain-rules',
+    );
+    writeFileSync(join(copy, `${target.id}.ndjson`), tamperedContent);
     const tampered = gate(copy);
+    assertSafeSubpath(tmpdir(), copy);
     rmSync(copy, { recursive: true, force: true });
     if (!planted) fail('negative check: no domain-rules scenario to tamper with');
     if (tampered.status === 0 || !tampered.output.includes('DIFFERS')) {

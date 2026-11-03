@@ -5,8 +5,10 @@
 // arguments. Also fails if any step definition mentions a surface (step definitions must not branch on it).
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { featureFolderAndFile, featureRelativePath } from './report-paths.mjs';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 // PARITY_REPORTS_DIR lets tools/build-reports.mjs run this gate on a tampered copy (its negative check).
 const reports = process.env.PARITY_REPORTS_DIR ?? join(root, 'test-harnesses/harness-serenity/reports');
 
@@ -52,7 +54,7 @@ function results(surface) {
     const perFolder = new Map();
     for (const [startedId, status] of worst) {
         const pickleId = testCases.get(started.get(startedId));
-        const folder = pickles.get(pickleId).split('features-shared/')[1].split('/')[0];
+        const { folder } = featureFolderAndFile(pickles.get(pickleId));
         const entry = perFolder.get(folder) ?? { passed: 0, total: 0, scenarios: new Map() };
         entry.total += 1;
         if (status === 'PASSED') {
@@ -67,7 +69,7 @@ function results(surface) {
 
 /** A scenario's identity for step-text parity: feature file, name, and every step's text and argument. */
 function signature(pickle) {
-    const feature = pickle.uri.split('features-shared/')[1];
+    const feature = featureRelativePath(pickle.uri);
     const steps = pickle.steps.map((step) => `${step.text}${step.argument ? ` ${JSON.stringify(step.argument)}` : ''}`);
     return [feature, pickle.name, ...steps].join('\n  ');
 }
