@@ -14,7 +14,8 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run build:core && npm run typecheck --workspaces --if-present",
-    "test:unit": "npm run build:core && npm run test:unit --workspaces --if-present",
+    "test:tools": "node --test tools/tests/report-tooling.test.mjs",
+    "test:unit": "npm run build:core && npm run test:unit --workspaces --if-present && npm run test:tools",
     "check:oracle": "python3 tools/check-expected-values.py",
     "test:core": "npm run build:core && npm run test:core -w @lop/harness-serenity",
     "test:api": "node tools/run-api-suite.mjs",

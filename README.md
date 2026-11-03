@@ -53,16 +53,16 @@ Medians of the 10 runs (range in brackets). Suite and scenario times come from t
 
 ## Run it
 
-Requires Node.js 24 LTS (see `.nvmrc`; Node 22.22.3+ also works: Angular CLI 22.2 needs it) and Python 3 for the oracle.
+Requires Node.js 24 LTS (see `.nvmrc`; Node 22.22.3+ also works: Angular CLI 22.2 needs it) and Python 3 for the oracle (on Windows, ensure `tzdata` is installed alongside `gherkin-official`, and run `python tools/check-expected-values.py` if the `python3` alias is not enabled).
 
 ```
 npm ci
-pip install gherkin-official==42.0.1
+pip install gherkin-official==42.0.1 tzdata
 npx playwright install chromium        # or set PLAYWRIGHT_CHROMIUM_EXECUTABLE to an existing Chromium
 npm run verify
 ```
 
-`verify` runs typecheck, unit and contract tests, the oracle, all four surfaces and the parity gate. Individual steps:
+`verify` runs typecheck, unit, contract and tooling tests (`npm run test:tools`), the oracle, all four surfaces and the parity gate. Individual steps:
 - `npm run test:core`
 - `npm run test:api`: starts the Node service in test mode for the run.
 - `npm run test:angular`: builds the SPA with the test configuration and starts the Node service and the SPA's same-origin server. Cucumber arguments go after `--`, e.g. `node tools/run-ui-suite.mjs angular -- --name "Decline notice"`.

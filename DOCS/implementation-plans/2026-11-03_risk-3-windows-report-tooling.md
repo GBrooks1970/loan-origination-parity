@@ -4,9 +4,9 @@ created: 2026-11-03T15:59Z
 project: loan-origination-parity
 type: implementation-plan
 item: "Risk #3"
-status: proposed
-approved: not yet
-delivered: not yet
+status: delivered
+approved: 2026-11-03
+delivered: 2026-11-03
 language: en-GB
 ---
 
@@ -81,11 +81,11 @@ Proposed plan only; no source, dependencies, backlog, branch or remote state cha
 
 | Decision | Options | Recommended | Owner's answer |
 |---|---|---|---|
-| Portable fix | Shared URI helper and local CLI / duplicated fixes with shell / WSL-only | Shared helper, fileURLToPath and shell-free local CLI | Awaiting approval |
-| CI scope | Existing Linux jobs plus native Windows acceptance / add Windows matrix | Existing jobs plus recorded Windows acceptance; matrix separate | Awaiting approval |
-| Unexpected environment failures | Record and propose follow-up / silently expand scope | Record exact blocker and propose separate work | Awaiting approval |
-| Publication | Draft project PR and separate support handover / direct main | Draft PRs; owner-controlled merges | Awaiting approval |
+| Portable fix | Shared URI helper and local CLI / duplicated fixes with shell / WSL-only | Shared helper, fileURLToPath and shell-free local CLI | Approved (2026-11-03) |
+| CI scope | Existing Linux jobs plus native Windows acceptance / add Windows matrix | Existing jobs plus recorded Windows acceptance; matrix separate | Approved (2026-11-03) |
+| Unexpected environment failures | Record and propose follow-up / silently expand scope | Record exact blocker and propose separate work | Approved (2026-11-03) |
+| Publication | Draft project PR and separate support handover / direct main | Draft PRs; owner-controlled merges | Approved (2026-11-03) |
 
 ## Outcome
 
-Investigation complete; implementation not started. Current root, URI and command-launch failures are reproduced with bounded probes. Candidate fixes still require implementation and full regression evidence.
+Delivered on 3 November 2026 on branch `codex/loan-risk-3-windows-tooling`: added `tools/report-paths.mjs` (`featureRelativePath`, `featureFolderAndFile`, `isFeatureInFolder`, `tamperFirstFolderPickleInNdjson`, `withKeywords`, `resolveSerenityBddCliPath`, `assertSafeSubpath`), updated `tools/check-parity.mjs`, `tools/build-reports.mjs`, and `tools/report-timings.mjs` to use `fileURLToPath`, the shared URI helpers, and shell-free `@serenity-js/serenity-bdd` CLI execution via `process.execPath`, and added 11 unit/integration tests in `tools/tests/report-tooling.test.mjs` (`npm run test:tools`, wired into `npm run test:unit`). Verified on Windows (`Node v24.18.0`, `Temurin 25.0.4.1`) across fresh four-surface runs (`core` 33/33 in 7.4 s, `api` 85/85 in 26.1 s, `angular` 106/106 in 143.4 s, `nextjs` 106/106 in 171.1 s), `npm run check:parity` (`PARITY PASS`: 33/33, 52/52, 21/21), `npm run report:timings`, and `npm run report:html` (4 Serenity BDD surface reports + `index.html` with 33 `domain-rules`, 52 `workflows`, and 21 `ui-only` rows, `exitClean: 0`, and `exitTampered: 1`). Reconciled `docs/backlog.md` (v8, 0 outstanding risks), `DOCS/implementation-logs/2026-11-03_risk-3-windows-report-tooling.md`, and `docs/walkthroughs/2026-11-03_risk-3-windows-report-tooling.md`.

@@ -13,6 +13,7 @@ The project has no tagged releases, so every change so far sits under [Unrelease
 
 ### Added
 
+- Added `tools/report-paths.mjs` and `tools/tests/report-tooling.test.mjs` (`npm run test:tools`, wired into `npm run test:unit`) to test portable Cucumber feature URI normalisation, `domain-rules` negative-check selection across Windows backslash and POSIX slash streams, safe subpath deletion guards, and shell-free Serenity BDD CLI resolution.
 - Added the parity evidence page as the index of the published site: a parity matrix of every scenario on every surface, the same step traced through all four abilities (code read from the harness source), the forced-command authorisation scenarios, this run's timings beside the Phase 4 medians, and a negative check that plants a step-text change in a copy of the reports and requires the real parity gate to fail. It is built by `npm run report:html` from the run's own artefacts (`tools/evidence-page/`).
 - Added Serenity BDD HTML reports: the harness now writes Serenity/JS JSON per surface, `npm run report:html` (`tools/build-reports.mjs`) builds one report per surface plus an index page, and CI publishes them to GitHub Pages from `main` when the parity gate and report build both pass.
 - Added `docs/backlog.md` (version 1) and this changelog as part of portfolio onboarding.
@@ -41,6 +42,7 @@ The project has no tagged releases, so every change so far sits under [Unrelease
 
 ### Fixed
 
+- Fixed Windows portability in `tools/check-parity.mjs`, `tools/build-reports.mjs`, and `tools/report-timings.mjs` (closes backlog Risk #3): replaced `new URL(..., import.meta.url).pathname` with `fileURLToPath`, normalised Cucumber `pickle.uri` separators through `tools/report-paths.mjs` so scenario grouping, identity, and negative-check `domain-rules` tampering work identically on backslash and forward-slash URIs, and replaced `spawnSync('npx', ['serenity-bdd', ...])` with `process.execPath` and the locally resolved `@serenity-js/serenity-bdd` CLI entry (`bin/serenity-bdd`).
 - Fixed the changelog having two Removed sections; they are now one.
 - Fixed an intermittent harness race on the browser surfaces. A refusal that arrived before the triggering click finished was reported as an unhandled rejection and failed the scenario in about 1 run in 30 (#9).
 - Fixed CI on a clean checkout by building `@lop/domain-core` before typecheck and tests (#1).
